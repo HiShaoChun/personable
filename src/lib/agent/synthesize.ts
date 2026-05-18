@@ -87,6 +87,9 @@ export async function synthesize(
       | { prompt_tokens?: number; completion_tokens?: number }
       | null = null;
 
+    console.error(
+      `[timing] synth attempt#${attempt + 1} start model=${config.modelSynthesis} streaming=${streaming}`
+    );
     if (streaming) {
       const stream = await client().chat.completions.create({
         model: config.modelSynthesis,
@@ -99,9 +102,16 @@ export async function synthesize(
       // 重试时（attempt>0）不再回推 thinking——避免重复刷屏，用户已经看过一遍。
       let buf = "";
       let jsonStarted = false;
+      let ttftMs: number | null = null;
       for await (const chunk of stream) {
         const delta = chunk.choices[0]?.delta?.content || "";
         if (delta) {
+          if (ttftMs == null) {
+            ttftMs = Date.now() - at;
+            console.error(
+              `[timing] synth attempt#${attempt + 1} ttft=${ttftMs}ms`
+            );
+          }
           const prevLen = buf.length;
           buf += delta;
           if (!jsonStarted && attempt === 0) {
@@ -137,13 +147,13 @@ export async function synthesize(
       const profile = normalizeProfile(parsed, vibe);
       const v = validateProfile(profile);
       console.error(
-        `[timing] synth attempt#${attempt + 1}: ${((Date.now() - at) / 1000).toFixed(1)}s ok=${v.ok}`
+        `[timing] synth attempt#${attempt + 1} done total=${((Date.now() - at) / 1000).toFixed(1)}s ok=${v.ok} in=${usage?.prompt_tokens ?? "?"} out=${usage?.completion_tokens ?? "?"}`
       );
       if (v.ok) return profile;
       lastErr = v.errors.join("；");
     } catch (e) {
       console.error(
-        `[timing] synth attempt#${attempt + 1}: ${((Date.now() - at) / 1000).toFixed(1)}s parse-fail`
+        `[timing] synth attempt#${attempt + 1} done total=${((Date.now() - at) / 1000).toFixed(1)}s parse-fail in=${usage?.prompt_tokens ?? "?"} out=${usage?.completion_tokens ?? "?"}`
       );
       lastErr = `JSON 解析失败：${(e as Error).message}`;
     }

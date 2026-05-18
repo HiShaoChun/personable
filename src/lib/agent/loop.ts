@@ -132,6 +132,10 @@ export async function runAgent(
 
     // 流式调用：累积 content 文本 + 跨 chunk 拼回 tool_calls。
     // DashScope 兼容协议下，tool_calls 分片到达，按 delta.index 累加 arguments。
+    const iterT0 = Date.now();
+    console.error(
+      `[timing] deepdive iter#${iter + 1} start model=${config.modelTriage}`
+    );
     const stream = await client().chat.completions.create({
       model: config.modelTriage,
       max_tokens: 1200,
@@ -149,9 +153,18 @@ export async function runAgent(
     let usage:
       | { prompt_tokens?: number; completion_tokens?: number }
       | null = null;
+    let iterTtftMs: number | null = null;
 
     for await (const chunk of stream) {
       const delta = chunk.choices[0]?.delta;
+      if (delta?.content || delta?.tool_calls) {
+        if (iterTtftMs == null) {
+          iterTtftMs = Date.now() - iterT0;
+          console.error(
+            `[timing] deepdive iter#${iter + 1} ttft=${iterTtftMs}ms`
+          );
+        }
+      }
       if (delta?.content) {
         content += delta.content;
         onProgress?.({ phase: "deepdive_thinking", delta: delta.content });
@@ -169,6 +182,10 @@ export async function runAgent(
       if (chunk.usage) usage = chunk.usage;
     }
     budget.add(usage);
+    const iterLlmS = ((Date.now() - iterT0) / 1000).toFixed(1);
+    console.error(
+      `[timing] deepdive iter#${iter + 1} llm-done total=${iterLlmS}s in=${usage?.prompt_tokens ?? "?"} out=${usage?.completion_tokens ?? "?"}`
+    );
 
     const toolCalls = Object.entries(toolAcc)
       .sort(([a], [b]) => Number(a) - Number(b))
@@ -230,6 +247,10 @@ export async function runAgent(
 
     // 并行执行所有被接受的 fetch；按原 tool_call 顺序追加 tool 消息
     if (fetchTasks.length > 0) {
+      const fetchT0 = Date.now();
+      console.error(
+        `[timing] deepdive iter#${iter + 1} fetches=${fetchTasks.length} start`
+      );
       const results = await Promise.all(
         fetchTasks.map(async (task) => {
           if (!task.accepted) {
@@ -257,6 +278,11 @@ export async function runAgent(
       for (const { task, content: c } of results) {
         messages.push({ role: "tool", tool_call_id: task.tcId, content: c });
       }
+      const fetchS = ((Date.now() - fetchT0) / 1000).toFixed(1);
+      const okCnt = results.filter((r) => r.content.startsWith("正文摘要")).length;
+      console.error(
+        `[timing] deepdive iter#${iter + 1} fetches done total=${fetchS}s ok=${okCnt}/${fetchTasks.length}`
+      );
     }
 
     if (finished) break;

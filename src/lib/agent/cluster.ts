@@ -47,6 +47,8 @@ ${compactList(entries)}
 
 输出 JSON：{"clusters":[{"name":"簇名","memberIndices":[..],"domains":["代表域名"],"note":"这个簇说明用户什么"}],"personaSketch":"两三句初版人格画像"}`;
 
+  const t0 = Date.now();
+  console.error(`[timing] cluster start model=${config.modelTriage}`);
   const stream = await client().chat.completions.create({
     model: config.modelTriage,
     max_tokens: 3000,
@@ -61,12 +63,17 @@ ${compactList(entries)}
   // 流式累积：在第一个 `{` 之前的文本视为 thinking 推给前端；之后属于 JSON 主体，不再外推。
   let buf = "";
   let jsonStarted = false;
+  let ttftMs: number | null = null;
   let usage:
     | { prompt_tokens?: number; completion_tokens?: number }
     | null = null;
   for await (const chunk of stream) {
     const delta = chunk.choices[0]?.delta?.content || "";
     if (delta) {
+      if (ttftMs == null) {
+        ttftMs = Date.now() - t0;
+        console.error(`[timing] cluster ttft=${ttftMs}ms`);
+      }
       const prevLen = buf.length;
       buf += delta;
       if (!jsonStarted) {
@@ -84,6 +91,10 @@ ${compactList(entries)}
     if (chunk.usage) usage = chunk.usage;
   }
   budget.add(usage);
+  const totalS = ((Date.now() - t0) / 1000).toFixed(1);
+  console.error(
+    `[timing] cluster done total=${totalS}s in=${usage?.prompt_tokens ?? "?"} out=${usage?.completion_tokens ?? "?"}`
+  );
 
   const parsed = parseJson<ClusterResult>(buf);
   parsed.clusters = (parsed.clusters ?? []).filter(
