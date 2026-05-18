@@ -56,6 +56,44 @@ a { color: var(--accent2); }
 .chip i { color: var(--muted); font-style: normal; font-size: 11px; }
 @keyframes chipin { from { opacity: 0; transform: translateY(4px); } }
 
+/* 深挖阶段：agent 推理文本 + 抓取 chip 状态机 */
+.deep-panel {
+  margin: 8px 0 4px 19px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.thinking {
+  background: #181c2c;
+  border: 1px solid #2a2f44;
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: var(--ink);
+  font-size: 13.5px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.caret {
+  display: inline-block; color: var(--accent);
+  animation: blink 1s steps(1) infinite;
+  margin-left: 2px;
+}
+@keyframes blink { 50% { opacity: 0; } }
+.fetch-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.fchip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #181c2c; border: 1px solid #2a2f44;
+  border-radius: 999px; padding: 3px 10px;
+  font-size: 12px; color: var(--muted);
+  animation: chipin .25s ease both;
+}
+.fchip .fdot { width: 6px; height: 6px; border-radius: 50%; background: #3a3f55; }
+.fchip.start .fdot { background: var(--accent); animation: pulse 1s infinite; }
+.fchip.ok { color: var(--ink); }
+.fchip.ok .fdot { background: var(--accent2); }
+.fchip.fail { color: #ff8585; }
+.fchip.fail .fdot { background: #ff8585; }
+
 .card {
   margin-top: 28px; background: linear-gradient(160deg, #1a1c2b, #121420);
   border: 1px solid #2a2f44; border-radius: 20px; padding: 30px;

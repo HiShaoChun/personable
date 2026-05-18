@@ -20,6 +20,19 @@ interface ClusterPreview {
   size: number;
   domains: string[];
 }
+interface FetchItem {
+  url: string;
+  host: string;
+  status: "start" | "ok" | "fail";
+}
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host.replace(/^www\./, "");
+  } catch {
+    return url.slice(0, 40);
+  }
+}
 
 export default function Home() {
   const [phase, setPhase] = useState<Phase>("idle");
@@ -35,6 +48,9 @@ export default function Home() {
     null
   );
   const [clusterPrev, setClusterPrev] = useState<ClusterPreview[]>([]);
+  // 深挖阶段可见性：agent 推理文本（打字机式）+ 抓取 chip 状态机
+  const [thinking, setThinking] = useState("");
+  const [fetches, setFetches] = useState<FetchItem[]>([]);
   const cardRef = useRef<HTMLDivElement>(null);
 
   async function handleFile(file: File) {
@@ -44,6 +60,8 @@ export default function Home() {
     setStage(null);
     setOvStat(null);
     setClusterPrev([]);
+    setThinking("");
+    setFetches([]);
     setPhase("parsing");
     try {
       const html = await file.text();
@@ -105,6 +123,18 @@ export default function Home() {
           } else if (ev.phase === "clusters") {
             setClusterPrev(ev.clusters as ClusterPreview[]);
             setStage("deepdive");
+          } else if (ev.phase === "deepdive_thinking") {
+            setThinking((s) => s + (ev.delta as string));
+          } else if (ev.phase === "deepdive_fetch") {
+            const url = ev.url as string;
+            const status = ev.status as FetchItem["status"];
+            setFetches((arr) => {
+              const i = arr.findIndex((x) => x.url === url);
+              if (i < 0) return [...arr, { url, host: hostOf(url), status }];
+              const next = arr.slice();
+              next[i] = { ...next[i], status };
+              return next;
+            });
           } else if (ev.phase === "deepdive") {
             setStage("synth");
           } else if (ev.phase === "done") {
@@ -235,6 +265,32 @@ export default function Home() {
                 : "agent 自主决定深挖哪些兴趣"
             }
           />
+
+          {(thinking || fetches.length > 0) && (
+            <div className="deep-panel">
+              {thinking && (
+                <div className="thinking">
+                  {thinking}
+                  {stage === "deepdive" && <span className="caret">▍</span>}
+                </div>
+              )}
+              {fetches.length > 0 && (
+                <div className="fetch-row">
+                  {fetches.map((f) => (
+                    <span
+                      key={f.url}
+                      className={"fchip " + f.status}
+                      title={f.url}
+                    >
+                      <span className="fdot" />
+                      {f.host}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <Step
             on={stage === "synth"}
             done={false}

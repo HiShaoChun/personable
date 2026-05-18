@@ -47,6 +47,8 @@ export interface RunResult {
 
 // 渐进式进度事件：让 route 在 agent 推进时就把概览/簇先流式给前端，
 // 掩盖深挖+合成的时延（design D3 风险缓解 / tasks 5.6）。
+// deepdive_thinking / deepdive_fetch 让"agent 自主深挖"这一步可见地推进——
+// 模型推理文本打字机式吐出，抓取过程以 chip 状态机呈现。
 export type Progress =
   | { phase: "overview"; overview: AgentState["overview"] }
   | {
@@ -54,6 +56,8 @@ export type Progress =
       clusters: { name: string; size: number; domains: string[] }[];
       personaSketch: string;
     }
+  | { phase: "deepdive_thinking"; delta: string }
+  | { phase: "deepdive_fetch"; url: string; status: "start" | "ok" | "fail" }
   | { phase: "deepdive"; fetches: number };
 
 export async function runAgent(
@@ -87,11 +91,17 @@ export async function runAgent(
   });
 
   // 步骤 3：agent 自主深挖（有界）
+  // 关键优化：(1) LLM 调用走流式，content 增量打字机式回推前端；
+  //          (2) 同一轮内多个 fetch_page 工具调用并行执行（Promise.all）；
+  //          (3) prompt 明确鼓励"一次性批量列出要抓的 URL"，否则模型默认一次一个，
+  //              并行就没机会发挥。
   const fetchedNotes: string[] = [];
   let fetches = 0;
   const sys =
-    "你是人格分析 agent。已有书签概览和初步兴趣簇。请判断哪些簇含糊或对刻画此人最关键，" +
-    `最多可对代表性 URL 调用 fetch_page ${config.maxPageFetches} 次（也可以一次都不调）。` +
+    "你是人格分析 agent。已有书签概览和初步兴趣簇。请判断哪些簇含糊或对刻画此人最关键。" +
+    "在调用工具前，先用一两句自然语言说明你打算深挖哪些簇、为什么——这些文字会实时展示给用户。" +
+    `如需深挖，请在同一轮一次性返回所有 fetch_page 工具调用（最多 ${config.maxPageFetches} 次），` +
+    "它们会并行抓取；不要一次只发一个工具调用再等结果。" +
     "完成后调用 finish_deepdive 给出要点。抓取失败很正常，不要纠缠，可继续或直接收尾。";
   const clusterBrief = clusters.clusters
     .map(
@@ -115,66 +125,136 @@ export async function runAgent(
   for (let iter = 0; iter < config.maxAgentIterations; iter++) {
     iters++;
     if (budget.exceeded || timeLeft() < 5000) break; // 边界兜底
-    const res = await client().chat.completions.create({
+
+    // 流式调用：累积 content 文本 + 跨 chunk 拼回 tool_calls。
+    // DashScope 兼容协议下，tool_calls 分片到达，按 delta.index 累加 arguments。
+    const stream = await client().chat.completions.create({
       model: config.modelTriage,
       max_tokens: 1200,
       tools: TOOLS,
       messages,
+      stream: true,
+      stream_options: { include_usage: true },
     });
-    budget.add(res.usage);
-    const choice = res.choices[0]?.message;
-    if (!choice) break;
-    messages.push(choice);
 
-    const toolCalls = choice.tool_calls ?? [];
+    let content = "";
+    const toolAcc: Record<
+      number,
+      { id?: string; name?: string; arguments: string }
+    > = {};
+    let usage:
+      | { prompt_tokens?: number; completion_tokens?: number }
+      | null = null;
+
+    for await (const chunk of stream) {
+      const delta = chunk.choices[0]?.delta;
+      if (delta?.content) {
+        content += delta.content;
+        onProgress?.({ phase: "deepdive_thinking", delta: delta.content });
+      }
+      if (delta?.tool_calls) {
+        for (const tcDelta of delta.tool_calls) {
+          const idx = tcDelta.index ?? 0;
+          const slot = (toolAcc[idx] ??= { arguments: "" });
+          if (tcDelta.id) slot.id = tcDelta.id;
+          if (tcDelta.function?.name) slot.name = tcDelta.function.name;
+          if (tcDelta.function?.arguments)
+            slot.arguments += tcDelta.function.arguments;
+        }
+      }
+      if (chunk.usage) usage = chunk.usage;
+    }
+    budget.add(usage);
+
+    const toolCalls = Object.entries(toolAcc)
+      .sort(([a], [b]) => Number(a) - Number(b))
+      .map(([, v]) => v)
+      .filter((v) => v.id && v.name);
+
     if (toolCalls.length === 0) break; // 模型不再用工具
 
+    // 把这一轮的 assistant 消息塞回去（OpenAI 协议要求 tool 消息前必须有对应的 assistant.tool_calls）
+    messages.push({
+      role: "assistant",
+      content: content || null,
+      tool_calls: toolCalls.map((v) => ({
+        id: v.id!,
+        type: "function" as const,
+        function: { name: v.name!, arguments: v.arguments },
+      })),
+    });
+
+    // 分流：finish 终止；fetch 批量并行；其它兜底
     let finished = false;
+    type FetchTask = {
+      tcId: string;
+      url: string;
+      accepted: boolean;
+    };
+    const fetchTasks: FetchTask[] = [];
+
     for (const tc of toolCalls) {
-      if (tc.type !== "function") continue;
       let args: Record<string, unknown> = {};
       try {
-        args = JSON.parse(tc.function.arguments || "{}");
+        args = JSON.parse(tc.arguments || "{}");
       } catch {
         args = {};
       }
-
-      if (tc.function.name === "finish_deepdive") {
+      if (tc.name === "finish_deepdive") {
         const notes = Array.isArray(args.notes) ? args.notes : [];
         fetchedNotes.push(...notes.map(String));
         finished = true;
         messages.push({
           role: "tool",
-          tool_call_id: tc.id,
+          tool_call_id: tc.id!,
           content: "ok",
         });
-      } else if (tc.function.name === "fetch_page") {
-        if (fetches >= config.maxPageFetches) {
-          messages.push({
-            role: "tool",
-            tool_call_id: tc.id,
-            content: "已达抓取上限，请 finish_deepdive。",
-          });
-          continue;
-        }
-        fetches++;
+      } else if (tc.name === "fetch_page") {
+        // 预扣额度：保证并行启动前不超上限；多余的直接拒绝
         const url = typeof args.url === "string" ? args.url : "";
-        const r = await fetchPage(url); // 失败不抛，优雅降级
-        messages.push({
-          role: "tool",
-          tool_call_id: tc.id,
-          content: r.ok
-            ? `正文摘要：${r.text?.slice(0, 1500)}`
-            : `抓取失败(${r.error})，请基于已有信息继续。`,
-        });
+        const accepted = fetches < config.maxPageFetches;
+        if (accepted) fetches++;
+        fetchTasks.push({ tcId: tc.id!, url, accepted });
       } else {
         messages.push({
           role: "tool",
-          tool_call_id: tc.id,
+          tool_call_id: tc.id!,
           content: "未知工具",
         });
       }
     }
+
+    // 并行执行所有被接受的 fetch；按原 tool_call 顺序追加 tool 消息
+    if (fetchTasks.length > 0) {
+      const results = await Promise.all(
+        fetchTasks.map(async (task) => {
+          if (!task.accepted) {
+            return { task, content: "已达抓取上限，请 finish_deepdive。" };
+          }
+          onProgress?.({
+            phase: "deepdive_fetch",
+            url: task.url,
+            status: "start",
+          });
+          const r = await fetchPage(task.url);
+          onProgress?.({
+            phase: "deepdive_fetch",
+            url: task.url,
+            status: r.ok ? "ok" : "fail",
+          });
+          return {
+            task,
+            content: r.ok
+              ? `正文摘要：${r.text?.slice(0, 1500)}`
+              : `抓取失败(${r.error})，请基于已有信息继续。`,
+          };
+        })
+      );
+      for (const { task, content: c } of results) {
+        messages.push({ role: "tool", tool_call_id: task.tcId, content: c });
+      }
+    }
+
     if (finished) break;
   }
 
