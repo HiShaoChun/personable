@@ -11,8 +11,10 @@ export interface InterestCluster {
 export interface PersonaProfile {
   vibe: Vibe;
   headline: string; // 卡片大标题
-  traits: string[]; // 3-7 条人格特质
-  clusters: InterestCluster[]; // 命名兴趣簇（按 size 降序）
+  traits: string[]; // 3-5 条人格特质
+  clusters: InterestCluster[]; // 命名兴趣簇（按 size 降序，硬阈值 + top 5 过滤后）
+  // 被硬阈值或软上限剔除的簇 name，按原 size 降序。无被剔除项时省略字段。
+  otherInterests?: string[];
   evolution: { period: string; summary: string }[]; // 按时间排序的兴趣演变
   disclaimer: string; // 固定免责声明
 }
@@ -34,8 +36,8 @@ export function validateProfile(p: unknown): ValidationResult {
     errors.push("headline 缺失");
 
   const traits = o.traits;
-  if (!Array.isArray(traits) || traits.length < 3 || traits.length > 7)
-    errors.push("traits 数量需为 3-7 条");
+  if (!Array.isArray(traits) || traits.length < 3 || traits.length > 5)
+    errors.push("traits 数量需为 3-5 条");
 
   const clusters = o.clusters as unknown[];
   if (!Array.isArray(clusters) || clusters.length === 0) {
@@ -57,12 +59,12 @@ export function validateProfile(p: unknown): ValidationResult {
   return { ok: errors.length === 0, errors };
 }
 
-/** 把模型输出归一为完整 PersonaProfile（补 disclaimer、排序、裁剪 traits）。 */
+/** 把模型输出归一为完整 PersonaProfile（补 disclaimer、排序、裁剪 traits、密度治理）。 */
 export function normalizeProfile(
   raw: Record<string, unknown>,
   vibe: Vibe
 ): PersonaProfile {
-  const clusters = (Array.isArray(raw.clusters) ? raw.clusters : [])
+  const allClusters = (Array.isArray(raw.clusters) ? raw.clusters : [])
     .map((c) => {
       const cc = c as Record<string, unknown>;
       return {
@@ -74,10 +76,26 @@ export function normalizeProfile(
     })
     .sort((a, b) => b.size - a.size);
 
-  return {
+  // 密度治理：硬阈值 max(3, ceil(total * 5%)) + 软上限 top 5。
+  // 详见 openspec change 2026-05-18-trim-card-density（D1、D2）。
+  const total = allClusters.reduce((s, c) => s + c.size, 0);
+  const cut = Math.max(3, Math.ceil(total * 0.05));
+  const passed = allClusters.filter((c) => c.size >= cut);
+  const clusters = passed.slice(0, 5);
+  const kept = new Set(clusters);
+  const otherNames = Array.from(
+    new Set(
+      allClusters
+        .filter((c) => !kept.has(c))
+        .map((c) => c.name.trim())
+        .filter((n) => n.length > 0)
+    )
+  );
+
+  const profile: PersonaProfile = {
     vibe,
     headline: String(raw.headline ?? "你的互联网人格"),
-    traits: (Array.isArray(raw.traits) ? raw.traits : []).map(String).slice(0, 7),
+    traits: (Array.isArray(raw.traits) ? raw.traits : []).map(String).slice(0, 5),
     clusters,
     evolution: (Array.isArray(raw.evolution) ? raw.evolution : []).map((e) => {
       const ee = e as Record<string, unknown>;
@@ -85,4 +103,6 @@ export function normalizeProfile(
     }),
     disclaimer: DISCLAIMER,
   };
+  if (otherNames.length > 0) profile.otherInterests = otherNames;
+  return profile;
 }

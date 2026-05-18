@@ -41,7 +41,7 @@ ${clusterLines}
 深挖网页要点：${state.fetchedNotes.join(" | ") || "（无）"}
 
 产出最终人格卡 JSON：
-{"headline":"一句话大标题","traits":["3到7条人格特质"],"clusters":[{"name":"簇名","size":数字,"blurb":"一句话","domains":["域名"]}],"evolution":[{"period":"时间段","summary":"那段时间的兴趣"}]}
+{"headline":"一句话大标题","traits":["3-5条人格特质"],"clusters":[{"name":"簇名","size":数字,"blurb":"一句话","domains":["域名"]}],"evolution":[{"period":"时间段","summary":"那段时间的兴趣"}]}
 只输出 JSON。`;
 }
 

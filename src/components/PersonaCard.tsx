@@ -35,6 +35,12 @@ export default function PersonaCard({
         </div>
       ))}
 
+      {profile.otherInterests && profile.otherInterests.length > 0 && (
+        <div className="others">
+          其他散点：{profile.otherInterests.join("、")}
+        </div>
+      )}
+
       {profile.evolution.length > 0 && (
         <div className="evo">
           {profile.evolution.map((e, i) => (

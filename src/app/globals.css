@@ -104,6 +104,7 @@ a { color: var(--accent2); }
 .cluster .bar { height: 8px; border-radius: 6px; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
 .cluster .row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 5px; }
 .cluster .blurb { color: var(--muted); font-size: 13px; margin-top: 3px; }
+.others { color: var(--muted); font-size: 13px; margin: 10px 0 4px; }
 .evo { border-left: 2px solid #2a2f44; padding-left: 16px; margin-top: 16px; }
 .evo div { margin: 10px 0; }
 .evo b { color: var(--accent2); }
