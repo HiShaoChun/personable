@@ -46,4 +46,4 @@
 - [x] 6.1 测试夹具：小、超上限、大量重复、损坏 四类书签导出
 - [x] 6.2 逐条验证 spec 场景（导入、agent 边界 + SSRF 拒绝 + 优雅降级、按风格重合成、卡片/分享/过期、限流 + 熔断 + 开关）
 - [x] 6.3 确认客户端包/网络无凭据；确认原始文件绝不上传；确认仅存派生画像
-- [x] 6.4 端到端真实跑通（DashScope/qwen3.5-plus，scripts/smoke.ts，6 书签 167.9s 成功）；⚠️ 时延超 Next 路由 maxDuration，待优化
+- [x] 6.4 端到端真实跑通（DashScope/qwen3.5-plus，scripts/smoke.ts，6 书签 167.9s 成功）；时延问题已解：`/api/persona` 改为 NDJSON 渐进式流（概览即时 → 簇数秒内 → 深挖/合成后补完），`maxDuration` 提至 300 且自托管 Node 不强制；前端流式读取并渐进渲染（design D3 风险缓解 / tasks 5.6）；smoke.ts 打印各阶段到达时刻可验证

@@ -45,9 +45,21 @@ export interface RunResult {
   state: AgentState; // 缓存，供按风格重合成复用
 }
 
+// 渐进式进度事件：让 route 在 agent 推进时就把概览/簇先流式给前端，
+// 掩盖深挖+合成的时延（design D3 风险缓解 / tasks 5.6）。
+export type Progress =
+  | { phase: "overview"; overview: AgentState["overview"] }
+  | {
+      phase: "clusters";
+      clusters: { name: string; size: number; domains: string[] }[];
+      personaSketch: string;
+    }
+  | { phase: "deepdive"; fetches: number };
+
 export async function runAgent(
   entries: BookmarkEntry[],
-  vibe: Vibe
+  vibe: Vibe,
+  onProgress?: (p: Progress) => void
 ): Promise<RunResult> {
   const startedAt = Date.now();
   const budget = new TokenBudget();
@@ -56,13 +68,23 @@ export async function runAgent(
   const T = (label: string, since: number) =>
     console.error(`[timing] ${label}: ${((Date.now() - since) / 1000).toFixed(1)}s`);
 
-  // 步骤 1：本地概览（非 LLM）
+  // 步骤 1：本地概览（非 LLM）——立即可发，零时延
   const overview = computeOverview(entries);
+  onProgress?.({ phase: "overview", overview });
 
   // 步骤 2：一次性 LLM 聚类
   let t = Date.now();
   const clusters = await clusterBookmarks(entries, overview, budget);
   T("cluster", t);
+  onProgress?.({
+    phase: "clusters",
+    clusters: clusters.clusters.map((c) => ({
+      name: c.name,
+      size: c.memberIndices.length,
+      domains: c.domains.slice(0, 4),
+    })),
+    personaSketch: clusters.personaSketch,
+  });
 
   // 步骤 3：agent 自主深挖（有界）
   const fetchedNotes: string[] = [];
@@ -157,6 +179,7 @@ export async function runAgent(
   }
 
   T(`deepdive(iters=${iters},fetches=${fetches})`, t);
+  onProgress?.({ phase: "deepdive", fetches });
 
   // 步骤 4：合成（即便 fetchedNotes 为空也能产出——优雅降级）
   const state: AgentState = { overview, clusters, fetchedNotes };

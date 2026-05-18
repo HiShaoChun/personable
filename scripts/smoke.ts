@@ -22,9 +22,20 @@ const SAMPLE = `<!DOCTYPE NETSCAPE-Bookmark-file-1><DL><p>
   const entries = normalizeAndDedupe(parseRawEntries(SAMPLE));
   console.log(`解析到 ${entries.length} 条书签，开始跑 agent…`);
   const t = Date.now();
+  const at = () => `${((Date.now() - t) / 1000).toFixed(1)}s`;
   try {
-    const { profile } = await runAgent(entries, "earnest");
-    console.log(`\n✓ 成功（${((Date.now() - t) / 1000).toFixed(1)}s）\n`);
+    // 打印渐进式进度：概览/簇应远早于最终完成到达（tasks 5.6/6.4 的验证）
+    const { profile } = await runAgent(entries, "earnest", (p) => {
+      if (p.phase === "overview")
+        console.log(`  [${at()}] 概览到达：${p.overview.total} 条`);
+      else if (p.phase === "clusters")
+        console.log(
+          `  [${at()}] 簇到达：${p.clusters.map((c) => c.name).join(", ")}`
+        );
+      else if (p.phase === "deepdive")
+        console.log(`  [${at()}] 深挖结束（抓取 ${p.fetches} 次），开始合成…`);
+    });
+    console.log(`\n✓ 成功（最终 ${at()}）\n`);
     console.log("标题:", profile.headline);
     console.log("特质:", profile.traits.join(" / "));
     console.log(

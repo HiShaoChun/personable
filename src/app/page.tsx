@@ -13,6 +13,14 @@ import type { PersonaProfile } from "@/lib/agent/schema";
 
 type Phase = "idle" | "parsing" | "thinking" | "done";
 
+// 渐进式流事件（与 /api/persona NDJSON 对应）
+type Stage = "cluster" | "deepdive" | "synth";
+interface ClusterPreview {
+  name: string;
+  size: number;
+  domains: string[];
+}
+
 export default function Home() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [over, setOver] = useState(false);
@@ -21,12 +29,21 @@ export default function Home() {
   const [profile, setProfile] = useState<PersonaProfile | null>(null);
   const [ids, setIds] = useState<{ id: string; runId: string } | null>(null);
   const [busyVibe, setBusyVibe] = useState<Vibe | null>(null);
+  // 渐进式预览：概览/簇先到，掩盖深挖+合成时延
+  const [stage, setStage] = useState<Stage | null>(null);
+  const [ovStat, setOvStat] = useState<{ total: number; span: string } | null>(
+    null
+  );
+  const [clusterPrev, setClusterPrev] = useState<ClusterPreview[]>([]);
   const cardRef = useRef<HTMLDivElement>(null);
 
   async function handleFile(file: File) {
     setErr("");
     setNote("");
     setProfile(null);
+    setStage(null);
+    setOvStat(null);
+    setClusterPrev([]);
     setPhase("parsing");
     try {
       const html = await file.text();
@@ -47,20 +64,65 @@ export default function Home() {
           `书签较多（${entries.length} 条），已抽取 ${sample.length} 条代表性样本分析。`
         );
       setPhase("thinking");
+      setStage("cluster");
       const res = await fetch("/api/persona", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ entries: sample }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setErr(data.message || data.error || "生成失败");
+      // 护栏拒绝在流开始前以 JSON 返回（非 200）
+      if (!res.ok || !res.body) {
+        let msg = "生成失败";
+        try {
+          msg = (await res.json()).message || msg;
+        } catch {}
+        setErr(msg);
         setPhase("idle");
         return;
       }
-      setProfile(data.profile);
-      setIds({ id: data.id, runId: data.runId });
-      setPhase("done");
+
+      // 渐进式读取 NDJSON：概览 → 簇 → 深挖 → 最终卡片
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = "";
+      let finished = false;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let nl: number;
+        while ((nl = buf.indexOf("\n")) >= 0) {
+          const line = buf.slice(0, nl).trim();
+          buf = buf.slice(nl + 1);
+          if (!line) continue;
+          const ev = JSON.parse(line);
+          if (ev.phase === "overview") {
+            const r = ev.overview.dateRange;
+            setOvStat({
+              total: ev.overview.total,
+              span: r.from && r.to ? `${r.from} ~ ${r.to}` : "时间未知",
+            });
+          } else if (ev.phase === "clusters") {
+            setClusterPrev(ev.clusters as ClusterPreview[]);
+            setStage("deepdive");
+          } else if (ev.phase === "deepdive") {
+            setStage("synth");
+          } else if (ev.phase === "done") {
+            setProfile(ev.profile);
+            setIds({ id: ev.id, runId: ev.runId });
+            setPhase("done");
+            finished = true;
+          } else if (ev.phase === "error") {
+            setErr(ev.message || "生成失败");
+            setPhase("idle");
+            finished = true;
+          }
+        }
+      }
+      if (!finished) {
+        setErr("连接中断，请重试。");
+        setPhase("idle");
+      }
     } catch (e) {
       setErr((e as Error).message);
       setPhase("idle");
@@ -148,10 +210,47 @@ export default function Home() {
           <Step on={true} done={phase === "thinking"} label="浏览器内解析书签" />
           <Step
             on={phase === "thinking"}
-            done={false}
-            label="agent 聚类 → 自主决定深挖哪些兴趣 → 合成人格"
+            done={!!ovStat}
+            label={
+              ovStat
+                ? `已读取 ${ovStat.total} 条书签 · ${ovStat.span}`
+                : "上传结构化条目，计算概览"
+            }
           />
-          <Step on={false} done={false} label="生成可分享卡片" />
+          <Step
+            on={phase === "thinking" && !!ovStat}
+            done={clusterPrev.length > 0}
+            label={
+              clusterPrev.length > 0
+                ? `已聚出 ${clusterPrev.length} 个兴趣簇`
+                : "AI 聚类你的兴趣"
+            }
+          />
+          <Step
+            on={stage === "deepdive"}
+            done={stage === "synth"}
+            label={
+              stage === "synth"
+                ? "深挖完成"
+                : "agent 自主决定深挖哪些兴趣"
+            }
+          />
+          <Step
+            on={stage === "synth"}
+            done={false}
+            label="合成人格 → 生成可分享卡片"
+          />
+
+          {clusterPrev.length > 0 && (
+            <div className="cluster-prev">
+              {clusterPrev.map((c) => (
+                <span key={c.name} className="chip">
+                  {c.name}
+                  <i>{c.size}</i>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

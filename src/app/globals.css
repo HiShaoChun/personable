@@ -44,6 +44,18 @@ a { color: var(--accent2); }
 .step.done .dot { background: var(--accent2); }
 @keyframes pulse { 50% { opacity: .35; } }
 
+/* 渐进式：簇预览在合成完成前先出现，掩盖时延 */
+.cluster-prev { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 4px 19px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #20243a; color: var(--ink);
+  border: 1px solid #3a3f55; border-radius: 999px;
+  padding: 4px 11px; font-size: 13px;
+  animation: chipin .3s ease both;
+}
+.chip i { color: var(--muted); font-style: normal; font-size: 11px; }
+@keyframes chipin { from { opacity: 0; transform: translateY(4px); } }
+
 .card {
   margin-top: 28px; background: linear-gradient(160deg, #1a1c2b, #121420);
   border: 1px solid #2a2f44; border-radius: 20px; padding: 30px;
