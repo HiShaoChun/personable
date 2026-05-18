@@ -59,7 +59,8 @@ export type Progress =
     }
   | { phase: "deepdive_thinking"; delta: string }
   | { phase: "deepdive_fetch"; url: string; status: "start" | "ok" | "fail" }
-  | { phase: "deepdive"; fetches: number };
+  | { phase: "deepdive"; fetches: number }
+  | { phase: "synth_thinking"; delta: string };
 
 export async function runAgent(
   entries: BookmarkEntry[],
@@ -265,9 +266,12 @@ export async function runAgent(
   onProgress?.({ phase: "deepdive", fetches });
 
   // 步骤 4：合成（即便 fetchedNotes 为空也能产出——优雅降级）
+  // 流式：先吐 vibe 语气下的 1-2 句点评作为预告，再吐 JSON。
   const state: AgentState = { overview, clusters, fetchedNotes };
   t = Date.now();
-  const profile = await synthesize(state, vibe, budget);
+  const profile = await synthesize(state, vibe, budget, (delta) =>
+    onProgress?.({ phase: "synth_thinking", delta })
+  );
   T("synthesize", t);
   return { profile, state };
 }

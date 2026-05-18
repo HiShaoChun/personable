@@ -48,9 +48,10 @@ export default function Home() {
     null
   );
   const [clusterPrev, setClusterPrev] = useState<ClusterPreview[]>([]);
-  // 聚类 / 深挖两步分别流式吐思考文本，让用户看到 agent 在干活
+  // 聚类 / 深挖 / 合成三步分别流式吐思考文本，让用户看到 agent 在干活
   const [clusterThinking, setClusterThinking] = useState("");
   const [thinking, setThinking] = useState("");
+  const [synthThinking, setSynthThinking] = useState("");
   const [fetches, setFetches] = useState<FetchItem[]>([]);
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -63,6 +64,7 @@ export default function Home() {
     setClusterPrev([]);
     setClusterThinking("");
     setThinking("");
+    setSynthThinking("");
     setFetches([]);
     setPhase("parsing");
     try {
@@ -141,6 +143,8 @@ export default function Home() {
             });
           } else if (ev.phase === "deepdive") {
             setStage("synth");
+          } else if (ev.phase === "synth_thinking") {
+            setSynthThinking((s) => s + (ev.delta as string));
           } else if (ev.phase === "done") {
             setProfile(ev.profile);
             setIds({ id: ev.id, runId: ev.runId });
@@ -310,6 +314,15 @@ export default function Home() {
             done={false}
             label="合成人格 → 生成可分享卡片"
           />
+
+          {synthThinking && (
+            <div className="deep-panel">
+              <div className="thinking">
+                {synthThinking}
+                {stage === "synth" && <span className="caret">▍</span>}
+              </div>
+            </div>
+          )}
 
           {clusterPrev.length > 0 && (
             <div className="cluster-prev">
