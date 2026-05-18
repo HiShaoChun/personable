@@ -30,10 +30,12 @@ class MemoryDriver implements Driver {
 }
 
 class SqliteDriver implements Driver {
-  private db: import("better-sqlite3").Database;
+  private db: any;
   constructor() {
-    // 动态 require：未装 better-sqlite3 时给出清晰错误而非崩在 import 期
-    const Database = require("better-sqlite3");
+    // 用变量名隐藏字符串：bundler 静态分析看不到 "better-sqlite3"，
+    // 因此 STORE_DRIVER=memory 时不会因为该可选依赖未装而编译失败。
+    const mod = "better-sqlite3";
+    const Database = require(mod);
     this.db = new Database(config.storePath);
     this.db.exec(
       "CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT, exp INTEGER)"
