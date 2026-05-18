@@ -13,7 +13,20 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN">
-      <body>{children}</body>
+      <body>
+        {children}
+        <footer className="site-footer">
+          觉得好玩？欢迎在{" "}
+          <a
+            href="https://github.com/HiShaoChun/personable"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            GitHub
+          </a>
+          {" "}给我一颗 ⭐
+        </footer>
+      </body>
     </html>
   );
 }
