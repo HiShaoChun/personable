@@ -40,6 +40,11 @@ ${clusterLines}
 初版草图：${state.clusters.personaSketch}
 深挖网页要点：${state.fetchedNotes.join(" | ") || "（无）"}
 
+注意：cluster.name 必须从上述聚类阶段的分类描述重写为带动词暗示 / 反差感的人物剪影式短句，贴合当前语气；size 保持输入数值不变，不许新增或删除 cluster。
+好例：「讯飞教育产线研发文档」→「教育产线的隐形调度员」
+好例：「韩剧动漫与休闲娱乐」→「韩剧也是节奏训练」
+坏例：「AI 灵魂工匠」「梦想筑造师」（空泛、无具体所指、中二造词）
+
 产出最终人格卡 JSON：
 {"headline":"一句话大标题","traits":["3-5个标签词（每条≤8字、纯名词短语、禁止冒号与解释）"],"clusters":[{"name":"簇名","size":数字,"domains":["域名"]}],"evolution":[{"period":"时间段","summary":"那段时间的兴趣"}]}
 只输出 JSON。`;

@@ -32,7 +32,7 @@ export class TokenBudget {
   }
 }
 
-/** 容错解析模型返回的 JSON（剥 ```json 围栏、取首个 {...}）。 */
+/** 容错解析模型返回的 JSON（剥 ```json 围栏、取首个 {...}、修复中文模型常见瑕疵）。 */
 export function parseJson<T = Record<string, unknown>>(s: string): T {
   let t = (s ?? "").trim();
   const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
@@ -40,5 +40,21 @@ export function parseJson<T = Record<string, unknown>>(s: string): T {
   const start = t.indexOf("{");
   const end = t.lastIndexOf("}");
   if (start >= 0 && end > start) t = t.slice(start, end + 1);
-  return JSON.parse(t) as T;
+  try {
+    return JSON.parse(t) as T;
+  } catch (firstErr) {
+    // 常见瑕疵：全角标点 `，:`、智能引号 `“”‘’`、`}`/`]` 前残留逗号。
+    // 这些字符即便出现在字符串内部也不影响 JSON 语义，全局替换是安全的。
+    const repaired = t
+      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/\uFF0C/g, ",")
+      .replace(/\uFF1A/g, ":")
+      .replace(/,(\s*[}\]])/g, "$1");
+    try {
+      return JSON.parse(repaired) as T;
+    } catch {
+      throw firstErr;
+    }
+  }
 }

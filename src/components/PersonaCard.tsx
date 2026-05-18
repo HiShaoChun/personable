@@ -1,5 +1,14 @@
 // 人格卡渲染。spec: persona-card「人格卡渲染」（特质 + 带相对规模的簇 + 演变 + 固定免责声明）。
-import type { PersonaProfile } from "@/lib/agent/schema";
+import type { InterestCluster, PersonaProfile } from "@/lib/agent/schema";
+
+// rank 1 → 主线；size ≥ top.size × 0.5 → 副线；否则 → 番外。
+// 详见 openspec change 2026-05-18-clusters-vignette-pass（D5）。
+function sizeLabel(c: InterestCluster, all: InterestCluster[]): string {
+  const top = all[0];
+  if (!top || top.size <= 0) return "番外";
+  if (c === top) return "主线";
+  return c.size / top.size >= 0.5 ? "副线" : "番外";
+}
 
 export default function PersonaCard({
   profile,
@@ -25,7 +34,7 @@ export default function PersonaCard({
         <div className="cluster" key={i}>
           <div className="row">
             <span>{c.name}</span>
-            <span style={{ color: "var(--muted)" }}>{c.size}</span>
+            <span className="rank">{sizeLabel(c, profile.clusters)}</span>
           </div>
           <div
             className="bar"
