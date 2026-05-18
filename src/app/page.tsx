@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import {
   parseRawEntries,
@@ -42,6 +42,12 @@ export default function Home() {
   const [profile, setProfile] = useState<PersonaProfile | null>(null);
   const [ids, setIds] = useState<{ id: string; runId: string } | null>(null);
   const [busyVibe, setBusyVibe] = useState<Vibe | null>(null);
+  // 后台预生成其余 vibe 的成品，按 vibe 索引；首次定稿 seed 当前 vibe，
+  // 命中即瞬时切换，未命中走原 fetch 路径。详见 openspec change
+  // 2026-05-18-precompute-vibe-variants（D1）。
+  const [vibeCache, setVibeCache] = useState<
+    Partial<Record<Vibe, { id: string; profile: PersonaProfile }>>
+  >({});
   // 渐进式预览：概览/簇先到，掩盖深挖+合成时延
   const [stage, setStage] = useState<Stage | null>(null);
   const [ovStat, setOvStat] = useState<{ total: number; span: string } | null>(
@@ -66,6 +72,7 @@ export default function Home() {
     setThinking("");
     setSynthThinking("");
     setFetches([]);
+    setVibeCache({});
     setPhase("parsing");
     try {
       const html = await file.text();
@@ -148,6 +155,10 @@ export default function Home() {
           } else if (ev.phase === "done") {
             setProfile(ev.profile);
             setIds({ id: ev.id, runId: ev.runId });
+            // seed 当前 vibe 的成品到缓存，预生成 effect 只算「剩余」vibe（D3）
+            setVibeCache({
+              [ev.profile.vibe]: { id: ev.id, profile: ev.profile },
+            });
             setPhase("done");
             finished = true;
           } else if (ev.phase === "error") {
@@ -167,8 +178,57 @@ export default function Home() {
     }
   }
 
+  // 终态出现后立即并发预生成其余 vibe；失败一律静默，不进入主流程错误态。
+  // 依赖只列 ids?.runId / phase / profile?.vibe —— 这三者一起把「同一次运行」
+  // 圈住，避免被无关 state 变化（如切换 vibe 后 ids.id 变了）二次触发（D2）。
+  useEffect(() => {
+    if (phase !== "done" || !ids || !profile) return;
+    const missing = VIBES.filter(
+      (v) => v !== profile.vibe && !vibeCache[v]
+    );
+    if (missing.length === 0) return;
+    let cancelled = false;
+    void Promise.all(
+      missing.map(async (v) => {
+        try {
+          const res = await fetch("/api/regenerate", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ runId: ids.runId, vibe: v }),
+          });
+          if (!res.ok) return; // rate_limited / busy / budget / expired —— 静默
+          const data = (await res.json()) as {
+            id: string;
+            profile: PersonaProfile;
+          };
+          if (cancelled) return;
+          setVibeCache((c) => ({
+            ...c,
+            [v]: { id: data.id, profile: data.profile },
+          }));
+        } catch {
+          // 网络错误同样静默
+        }
+      })
+    );
+    return () => {
+      cancelled = true;
+    };
+    // vibeCache 故意不进依赖：每次写入会触发 effect 重跑，重跑时 missing 缩小
+    // 直至空集自然 return，不会重复发请求；进依赖反而需要额外去重 flag。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ids?.runId, phase, profile?.vibe]);
+
   async function regenerate(vibe: Vibe) {
     if (!ids) return;
+    // 命中预生成缓存：同步替换、不进入 busyVibe、不发请求（D4）
+    const hit = vibeCache[vibe];
+    if (hit) {
+      setProfile(hit.profile);
+      setIds({ ...ids, id: hit.id });
+      setErr("");
+      return;
+    }
     setBusyVibe(vibe);
     setErr("");
     try {
@@ -184,6 +244,11 @@ export default function Home() {
       }
       setProfile(data.profile);
       setIds({ ...ids, id: data.id }); // 每个风格变体独立分享链接
+      // 回填缓存：下次再切回同 vibe 即瞬时（D4 注 2）
+      setVibeCache((c) => ({
+        ...c,
+        [vibe]: { id: data.id, profile: data.profile },
+      }));
     } finally {
       setBusyVibe(null);
     }
