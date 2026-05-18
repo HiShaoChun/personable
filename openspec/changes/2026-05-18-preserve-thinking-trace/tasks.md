@@ -1,14 +1,20 @@
 ## 1. 前端渲染条件
 
-- [ ] 1.1 在 [src/app/page.tsx](src/app/page.tsx) 引入 `finished = phase === "done"`，并把过程档案外层守卫从 `(phase === "parsing" || phase === "thinking")` 改为 `phase !== "idle"`（D1）
-- [ ] 1.2 将每个 `<Step …>` 的 `done` 在 `finished` 时强制为 `true`、`on` 强制为 `false`；隐藏所有 `▍` 闪烁光标（D2）
-- [ ] 1.3 调整渲染顺序：标题 → 过程档案 → `note`/`err` → `PersonaCard` → 操作栏 → 隐私链接（D3）
-- [ ] 1.4 确认 `cardRef` 仍仅绑定 `<PersonaCard>` 内部容器，导出图片不包含过程档案（D5）
+- [x] 1.1 在 [src/app/page.tsx](src/app/page.tsx) 引入 `finished = phase === "done"`，并把过程档案外层守卫从 `(phase === "parsing" || phase === "thinking")` 改为 `phase !== "idle"`（D1）
+- [x] 1.2 将每个 `<Step …>` 的 `done` 在 `finished` 时强制为 `true`、`on` 强制为 `false`；隐藏所有 `▍` 闪烁光标（D2）
+- [x] 1.3 渲染顺序已天然符合 D3（idle drop → 过程档案 → `note`/`err` → `PersonaCard` → 操作栏 → 隐私链接），无需调整
+- [x] 1.4 `cardRef` 仍绑定 `<PersonaCard innerRef={cardRef}>`，过程档案在其外层兄弟节点 → `toPng` 仅截卡片（D5）
+
+## 1b. 合成阶段思考内容增厚
+
+- [x] 1b.1 在 [src/lib/agent/synthesize.ts](src/lib/agent/synthesize.ts) 把流式分支的 system prompt 由「1-2 句简短点评」改为「4-7 句、约 100-220 字、点名具体簇或域名的合成思路」，要求段落形式（D5b）
+- [x] 1b.2 非流式分支（`response_format=json_object`，`regenerate` 用）保持原样，不重播思考（与 D4 一致）
+- [x] 1b.3 不改 `parseJson` 与流式切分逻辑——`{` 之前的内容自动落到 thinking 区间
 
 ## 2. regenerate 路径不动过程档案
 
-- [ ] 2.1 验证 `regenerate(vibe)` 仍只 `setProfile` / `setIds`，不触碰过程相关 state（D4）
-- [ ] 2.2 确认终态切换风格后，过程档案中的 `synthThinking` 等保持首次运行原貌（不重播、不清空）
+- [x] 2.1 `regenerate(vibe)` 仅 `setProfile` / `setIds`，未触碰 `clusterThinking` / `thinking` / `fetches` / `synthThinking` / `clusterPrev` / `ovStat`（D4）
+- [x] 2.2 切换风格走非流式 `/api/regenerate`，不发射 `synth_thinking` 事件——前端没机会重播，行为正确
 
 ## 3. 验证
 

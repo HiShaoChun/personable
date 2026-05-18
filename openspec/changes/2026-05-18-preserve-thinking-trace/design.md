@@ -97,6 +97,27 @@ agent 跑出来的真实轨迹，换风格不重跑深挖——所以原过程�
 「曾经怎么收尾」的真实记录，不是当前卡片的解说词；卡片自身的 vibe 文
 案已经表达了新风格的产物。
 
+### D5b — 合成阶段也产出实质性思考文本
+
+实地试跑后发现：合成阶段流式 prompt 原本只要求模型"先用 1-2 句话简短点评"
+再吐 JSON，许多次运行模型会直接吐 `{` 开始 JSON，前端 `synthThinking` 拿
+到的是空串，「合成人格 → 生成可分享卡片」这一步在档案里只剩一个标题，
+和深挖那一大段实质性 reasoning 的体感落差很大——这正是用户「不够真」感
+受的来源之一。
+
+在 [src/lib/agent/synthesize.ts](src/lib/agent/synthesize.ts) 把流式
+system prompt 从「1-2 句点评」改为「4-7 句、约 100-220 字、点名具体簇
+或域名的合成思路」，并明确要求段落形式、避免项目符号/小标题。要求覆盖：
+怎么读这个人、起什么大标题、留哪些特质舍哪些、时间线如何切段。
+
+不改 `parseJson` —— 它本来就会剥 ```json 围栏并取首个平衡 `{...}`，
+preamble 多长都安全。也不改流式切分逻辑（`buf.indexOf("{")` 之前的内容
+作为 thinking 流出）—— 既然让模型多写，自然会有 token 落到 thinking
+区间。仅改 prompt 即可。
+
+非流式路径（`regenerate` 用的 `response_format=json_object` 分支）保持
+"只输出 JSON" 不变——重合成时本身不需要再播放思考，与 D4 一致。
+
 ### D5 — 导出与分享只截卡片
 
 `exportImage` 使用 `toPng(cardRef.current)`，`cardRef` 绑定的是

@@ -55,13 +55,18 @@ export async function synthesize(
   budget: TokenBudget,
   onThinking?: (delta: string) => void
 ): Promise<PersonaProfile> {
-  // 用 onThinking 时让模型先吐 1-2 句点评再吐 JSON；不用时（regenerate 等非流式入口）
-  // 保持原本"只输出 JSON + response_format=json_object"的更稳形态。
+  // 用 onThinking 时让模型先吐一段实质性的"合成思路"（不止点评，要讲清楚卡片
+  // 怎么搭出来的），再吐 JSON；不用时（regenerate 等非流式入口）保持原本
+  // "只输出 JSON + response_format=json_object"的更稳形态。
   const streaming = !!onThinking;
   const sys = streaming
     ? `你在生成一张"互联网人格卡"。${VIBE_PROMPT[vibe]} ${SAFETY} ` +
-      "先用 1-2 句话以你将要采用的语气简短点评这个人（这段会实时展示给用户），" +
-      "然后从新一行开始严格输出 JSON，且只输出一个 JSON 对象。"
+      "在输出 JSON 之前，先用一段连贯的自然语言（4-7 句，约 100-220 字）" +
+      "以你将要采用的语气讲清楚你的合成思路——这段会实时展示给用户：" +
+      "你怎么读这个人；准备起一个什么样的大标题、为什么；挑哪些特质、又因为什么" +
+      "舍掉了哪些；兴趣演变的时间线为什么这么切。点名具体的簇或域名，不要写成" +
+      "项目符号或小标题，写成一气呵成的口语化段落，避免空话。" +
+      "之后另起一行，严格只输出一个 JSON 对象，不要在 JSON 里再夹任何说明文字。"
     : `你在生成一张"互联网人格卡"。${VIBE_PROMPT[vibe]} ${SAFETY} 严格只输出 JSON。`;
   let lastErr = "";
   for (let attempt = 0; attempt < 3; attempt++) {

@@ -205,6 +205,8 @@ export default function Home() {
     setNote("分享链接已复制：" + link);
   }
 
+  const finished = phase === "done";
+
   return (
     <main className="wrap">
       <h1>书签人格卡</h1>
@@ -243,12 +245,12 @@ export default function Home() {
         </div>
       )}
 
-      {(phase === "parsing" || phase === "thinking") && (
+      {phase !== "idle" && (
         <div className="steps">
-          <Step on={true} done={phase === "thinking"} label="浏览器内解析书签" />
+          <Step on={!finished} done={finished || phase === "thinking"} label="浏览器内解析书签" />
           <Step
-            on={phase === "thinking"}
-            done={!!ovStat}
+            on={!finished && phase === "thinking" && !ovStat}
+            done={finished || !!ovStat}
             label={
               ovStat
                 ? `已读取 ${ovStat.total} 条书签 · ${ovStat.span}`
@@ -256,8 +258,8 @@ export default function Home() {
             }
           />
           <Step
-            on={phase === "thinking" && !!ovStat}
-            done={clusterPrev.length > 0}
+            on={!finished && phase === "thinking" && !!ovStat && clusterPrev.length === 0}
+            done={finished || clusterPrev.length > 0}
             label={
               clusterPrev.length > 0
                 ? `已聚出 ${clusterPrev.length} 个兴趣簇`
@@ -269,16 +271,18 @@ export default function Home() {
             <div className="deep-panel">
               <div className="thinking">
                 {clusterThinking}
-                {clusterPrev.length === 0 && <span className="caret">▍</span>}
+                {!finished && clusterPrev.length === 0 && (
+                  <span className="caret">▍</span>
+                )}
               </div>
             </div>
           )}
 
           <Step
-            on={stage === "deepdive"}
-            done={stage === "synth"}
+            on={!finished && stage === "deepdive"}
+            done={finished || stage === "synth"}
             label={
-              stage === "synth"
+              finished || stage === "synth"
                 ? "深挖完成"
                 : "agent 自主决定深挖哪些兴趣"
             }
@@ -289,7 +293,9 @@ export default function Home() {
               {thinking && (
                 <div className="thinking">
                   {thinking}
-                  {stage === "deepdive" && <span className="caret">▍</span>}
+                  {!finished && stage === "deepdive" && (
+                    <span className="caret">▍</span>
+                  )}
                 </div>
               )}
               {fetches.length > 0 && (
@@ -310,8 +316,8 @@ export default function Home() {
           )}
 
           <Step
-            on={stage === "synth"}
-            done={false}
+            on={!finished && stage === "synth"}
+            done={finished}
             label="合成人格 → 生成可分享卡片"
           />
 
@@ -319,7 +325,9 @@ export default function Home() {
             <div className="deep-panel">
               <div className="thinking">
                 {synthThinking}
-                {stage === "synth" && <span className="caret">▍</span>}
+                {!finished && stage === "synth" && (
+                  <span className="caret">▍</span>
+                )}
               </div>
             </div>
           )}
