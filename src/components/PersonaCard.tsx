@@ -31,7 +31,6 @@ export default function PersonaCard({
             className="bar"
             style={{ width: `${Math.round((c.size / max) * 100)}%` }}
           />
-          {c.blurb && <div className="blurb">{c.blurb}</div>}
         </div>
       ))}
 

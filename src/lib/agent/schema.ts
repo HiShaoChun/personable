@@ -4,7 +4,7 @@ import type { Vibe } from "@/config";
 export interface InterestCluster {
   name: string; // 命名兴趣簇
   size: number; // 该簇书签条数（相对规模）
-  blurb: string; // 一句话刻画
+  blurb?: string; // 历史字段，新生成不再带，保留以兼容旧 share JSON
   domains: string[]; // 代表域名
 }
 
@@ -36,8 +36,14 @@ export function validateProfile(p: unknown): ValidationResult {
     errors.push("headline 缺失");
 
   const traits = o.traits;
-  if (!Array.isArray(traits) || traits.length < 3 || traits.length > 5)
+  if (!Array.isArray(traits) || traits.length < 3 || traits.length > 5) {
     errors.push("traits 数量需为 3-5 条");
+  } else {
+    traits.forEach((t, i) => {
+      if (typeof t !== "string" || [...t].length > 8)
+        errors.push(`traits[${i}] 需为 ≤8 字的短标签`);
+    });
+  }
 
   const clusters = o.clusters as unknown[];
   if (!Array.isArray(clusters) || clusters.length === 0) {
@@ -59,6 +65,18 @@ export function validateProfile(p: unknown): ValidationResult {
   return { ok: errors.length === 0, errors };
 }
 
+// trait 防御式清洗：切冒号、去末尾标点、限长 8 字。详见 openspec change
+// 2026-05-18-traits-as-chips-drop-blurb（D2）。
+function cleanTrait(s: unknown): string {
+  let t = String(s ?? "").trim();
+  const ci = t.search(/[：:]/);
+  if (ci >= 0) t = t.slice(0, ci).trim();
+  t = t.replace(/[。、，,．.\s]+$/g, "");
+  const chars = [...t];
+  if (chars.length > 8) t = chars.slice(0, 8).join("");
+  return t;
+}
+
 /** 把模型输出归一为完整 PersonaProfile（补 disclaimer、排序、裁剪 traits、密度治理）。 */
 export function normalizeProfile(
   raw: Record<string, unknown>,
@@ -70,7 +88,6 @@ export function normalizeProfile(
       return {
         name: String(cc.name ?? "未命名"),
         size: Number(cc.size ?? 0),
-        blurb: String(cc.blurb ?? ""),
         domains: Array.isArray(cc.domains) ? cc.domains.map(String).slice(0, 6) : [],
       };
     })
@@ -95,7 +112,10 @@ export function normalizeProfile(
   const profile: PersonaProfile = {
     vibe,
     headline: String(raw.headline ?? "你的互联网人格"),
-    traits: (Array.isArray(raw.traits) ? raw.traits : []).map(String).slice(0, 5),
+    traits: (Array.isArray(raw.traits) ? raw.traits : [])
+      .map(cleanTrait)
+      .filter((t) => t.length > 0)
+      .slice(0, 5),
     clusters,
     evolution: (Array.isArray(raw.evolution) ? raw.evolution : []).map((e) => {
       const ee = e as Record<string, unknown>;
