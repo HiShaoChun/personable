@@ -72,6 +72,7 @@ export default function Home() {
   const [profile, setProfile] = useState<PersonaProfile | null>(null);
   const [ids, setIds] = useState<{ id: string; runId: string } | null>(null);
   const [busyVibe, setBusyVibe] = useState<Vibe | null>(null);
+  const [copied, setCopied] = useState(false);
   // 后台预生成其余 vibe 的成品，按 vibe 索引；首次定稿 seed 当前 vibe，
   // 命中即瞬时切换，未命中走原 fetch 路径。详见 openspec change
   // 2026-05-18-precompute-vibe-variants（D1）。
@@ -412,11 +413,18 @@ export default function Home() {
     a.click();
   }
 
-  function copyShare() {
+  async function copyShare() {
     if (!ids) return;
     const link = `${location.origin}/c/${ids.id}`;
-    navigator.clipboard.writeText(link);
-    setNote("分享链接已复制：" + link);
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // 非 HTTPS / 文档失焦 / 权限被拒 —— 写剪贴板会失败。
+      // 此时把链接塞进 note，让用户能手动复制。
+      setNote("复制失败，请手动复制：" + link);
+    }
   }
 
   const finished = phase === "done";
@@ -570,7 +578,7 @@ export default function Home() {
               保存为图片
             </button>
             <button className="btn ghost" onClick={copyShare}>
-              复制分享链接
+              {copied ? "已复制" : "复制分享链接"}
             </button>
             <span style={{ color: "var(--muted)", fontSize: 13 }}>换个风格：</span>
             {VIBES.map((v) => (
