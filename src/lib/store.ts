@@ -14,7 +14,14 @@ interface Driver {
 }
 
 class MemoryDriver implements Driver {
-  private m = new Map<string, Row>();
+  // 开发模式下 Next.js 的 HMR 会重载本模块，导致模块级的 Map 被重建、
+  // 之前缓存的 agent state 全部丢失，前端再点「换个风格」就会 404 expired。
+  // 把 Map 挂到 globalThis 上，跨 HMR 重载保留数据。
+  private m: Map<string, Row>;
+  constructor() {
+    const g = globalThis as unknown as { __personableMemStore?: Map<string, Row> };
+    this.m = g.__personableMemStore ??= new Map<string, Row>();
+  }
   set(key: string, value: string, ttlMs: number) {
     this.m.set(key, { value, expiresAt: Date.now() + ttlMs });
   }

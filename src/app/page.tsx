@@ -48,7 +48,8 @@ export default function Home() {
     null
   );
   const [clusterPrev, setClusterPrev] = useState<ClusterPreview[]>([]);
-  // 深挖阶段可见性：agent 推理文本（打字机式）+ 抓取 chip 状态机
+  // 聚类 / 深挖两步分别流式吐思考文本，让用户看到 agent 在干活
+  const [clusterThinking, setClusterThinking] = useState("");
   const [thinking, setThinking] = useState("");
   const [fetches, setFetches] = useState<FetchItem[]>([]);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -60,6 +61,7 @@ export default function Home() {
     setStage(null);
     setOvStat(null);
     setClusterPrev([]);
+    setClusterThinking("");
     setThinking("");
     setFetches([]);
     setPhase("parsing");
@@ -120,6 +122,8 @@ export default function Home() {
               total: ev.overview.total,
               span: r.from && r.to ? `${r.from} ~ ${r.to}` : "时间未知",
             });
+          } else if (ev.phase === "cluster_thinking") {
+            setClusterThinking((s) => s + (ev.delta as string));
           } else if (ev.phase === "clusters") {
             setClusterPrev(ev.clusters as ClusterPreview[]);
             setStage("deepdive");
@@ -256,6 +260,16 @@ export default function Home() {
                 : "AI 聚类你的兴趣"
             }
           />
+
+          {clusterThinking && (
+            <div className="deep-panel">
+              <div className="thinking">
+                {clusterThinking}
+                {clusterPrev.length === 0 && <span className="caret">▍</span>}
+              </div>
+            </div>
+          )}
+
           <Step
             on={stage === "deepdive"}
             done={stage === "synth"}

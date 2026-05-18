@@ -70,8 +70,7 @@ a { color: var(--accent2); }
   font-size: 13.5px;
   line-height: 1.65;
   white-space: pre-wrap;
-  max-height: 180px;
-  overflow-y: auto;
+  word-break: break-word;
 }
 .caret {
   display: inline-block; color: var(--accent);

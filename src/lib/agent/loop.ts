@@ -51,6 +51,7 @@ export interface RunResult {
 // 模型推理文本打字机式吐出，抓取过程以 chip 状态机呈现。
 export type Progress =
   | { phase: "overview"; overview: AgentState["overview"] }
+  | { phase: "cluster_thinking"; delta: string }
   | {
       phase: "clusters";
       clusters: { name: string; size: number; domains: string[] }[];
@@ -76,9 +77,11 @@ export async function runAgent(
   const overview = computeOverview(entries);
   onProgress?.({ phase: "overview", overview });
 
-  // 步骤 2：一次性 LLM 聚类
+  // 步骤 2：一次性 LLM 聚类（流式：先吐自然语言点评，再吐 JSON）
   let t = Date.now();
-  const clusters = await clusterBookmarks(entries, overview, budget);
+  const clusters = await clusterBookmarks(entries, overview, budget, (delta) =>
+    onProgress?.({ phase: "cluster_thinking", delta })
+  );
   T("cluster", t);
   onProgress?.({
     phase: "clusters",
