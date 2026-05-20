@@ -1,7 +1,7 @@
 // finalize_profile 合成（Sonnet）+ 按风格重合成。
 // spec: persona-agent「结构化画像输出」「按风格重合成且不重跑深挖」。
 import { config, type Vibe } from "@/config";
-import { client, parseJson, TokenBudget } from "./llm";
+import { client, makeThinkingSplitter, parseJson, TokenBudget } from "./llm";
 import type { ClusterResult } from "./cluster";
 import type { Overview } from "./overview";
 import {
@@ -103,10 +103,9 @@ export async function synthesize(
         stream_options: { include_usage: true },
         messages,
       });
-      // 与 cluster 相同的"`{` 前为 thinking，之后为 JSON"切分逻辑。
+      // 与 cluster 相同的切分逻辑（首个 `{` 或 ``` 前为 thinking）。
       // 重试时（attempt>0）不再回推 thinking——避免重复刷屏，用户已经看过一遍。
-      let buf = "";
-      let jsonStarted = false;
+      const splitter = makeThinkingSplitter();
       let ttftMs: number | null = null;
       for await (const chunk of stream) {
         const delta = chunk.choices[0]?.delta?.content || "";
@@ -117,24 +116,12 @@ export async function synthesize(
               `[timing] synth attempt#${attempt + 1} ttft=${ttftMs}ms`
             );
           }
-          const prevLen = buf.length;
-          buf += delta;
-          if (!jsonStarted && attempt === 0) {
-            const idx = buf.indexOf("{");
-            if (idx >= 0) {
-              const thinkingTail = Math.max(0, idx - prevLen);
-              if (thinkingTail > 0) onThinking!(delta.slice(0, thinkingTail));
-              jsonStarted = true;
-            } else {
-              onThinking!(delta);
-            }
-          } else if (!jsonStarted && buf.indexOf("{") >= 0) {
-            jsonStarted = true;
-          }
+          const emit = splitter.push(delta);
+          if (emit && attempt === 0) onThinking!(emit);
         }
         if (chunk.usage) usage = chunk.usage;
       }
-      raw = buf;
+      raw = splitter.buf;
     } else {
       const res = await client().chat.completions.create({
         model: config.modelSynthesis,

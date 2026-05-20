@@ -1,7 +1,7 @@
 // 首页 idle 态预制示例画像。同一组虚构 clusters，三种 vibe 各一份成品，
 // 让访客一眼看到「换风格」会带来哪些差异。纯前端静态数据，不进任何
 // LLM/抓取/持久化路径。
-import { DISCLAIMER, type PersonaProfile } from "@/lib/agent/schema";
+import type { PersonaProfile } from "@/lib/agent/schema";
 
 // 共享的虚构兴趣簇：跨三份示例完全一致，差异只体现在 headline / traits /
 // evolution 的措辞上，避免「内容不同所以差异这么大」的错觉。
@@ -49,7 +49,7 @@ export const SAMPLE_EARNEST: PersonaProfile = {
     },
     { period: "2025 ~ 至今", summary: "把目光投向居家美学，开始打理生活的细节" },
   ],
-  disclaimer: DISCLAIMER,
+  disclaimer: "",
 };
 
 export const SAMPLE_ROAST: PersonaProfile = {
@@ -69,7 +69,7 @@ export const SAMPLE_ROAST: PersonaProfile = {
       summary: "终于发现没有 MUJI 香薰救不了的加班夜",
     },
   ],
-  disclaimer: DISCLAIMER,
+  disclaimer: "",
 };
 
 export const SAMPLE_POETIC: PersonaProfile = {
@@ -92,7 +92,7 @@ export const SAMPLE_POETIC: PersonaProfile = {
       summary: "在原木与亚麻之间，安放被加班磨钝的目光",
     },
   ],
-  disclaimer: DISCLAIMER,
+  disclaimer: "",
 };
 
 // 顺序固定 earnest → roast → poetic，与 VIBES 一致，便于横向对比。

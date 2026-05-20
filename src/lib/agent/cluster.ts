@@ -2,7 +2,7 @@
 import type { BookmarkEntry } from "@/lib/bookmarks/types";
 import type { Overview } from "./overview";
 import { config } from "@/config";
-import { client, parseJson, TokenBudget } from "./llm";
+import { client, makeThinkingSplitter, parseJson, TokenBudget } from "./llm";
 
 export interface ClusterResult {
   clusters: {
@@ -60,9 +60,8 @@ ${compactList(entries)}
     ],
   });
 
-  // 流式累积：在第一个 `{` 之前的文本视为 thinking 推给前端；之后属于 JSON 主体，不再外推。
-  let buf = "";
-  let jsonStarted = false;
+  // 流式累积：边界由 makeThinkingSplitter 划定（首个 `{` 或 ``` 之前为 thinking）。
+  const splitter = makeThinkingSplitter();
   let ttftMs: number | null = null;
   let usage:
     | { prompt_tokens?: number; completion_tokens?: number }
@@ -74,22 +73,12 @@ ${compactList(entries)}
         ttftMs = Date.now() - t0;
         console.error(`[timing] cluster ttft=${ttftMs}ms`);
       }
-      const prevLen = buf.length;
-      buf += delta;
-      if (!jsonStarted) {
-        const idx = buf.indexOf("{");
-        if (idx >= 0) {
-          // 这一片里 [prevLen, idx) 仍属于 thinking 区段；idx 之后是 JSON
-          const thinkingTail = Math.max(0, idx - prevLen);
-          if (thinkingTail > 0) onThinking?.(delta.slice(0, thinkingTail));
-          jsonStarted = true;
-        } else {
-          onThinking?.(delta);
-        }
-      }
+      const emit = splitter.push(delta);
+      if (emit && onThinking) onThinking(emit);
     }
     if (chunk.usage) usage = chunk.usage;
   }
+  const buf = splitter.buf;
   budget.add(usage);
   const totalS = ((Date.now() - t0) / 1000).toFixed(1);
   console.error(

@@ -59,7 +59,7 @@ export default function PersonaCard({
         </div>
       )}
 
-      <div className="disc">{profile.disclaimer}</div>
+      {profile.disclaimer && <div className="disc">{profile.disclaimer}</div>}
     </div>
   );
 }
