@@ -33,9 +33,9 @@
 
 - [x] 5.1 `npx tsc --noEmit` 通过，无类型错误
 - [x] 5.2 项目未配置 lint 脚本（package.json 仅有 typecheck / test:fixtures），跳过；改为跑 `npm run test:fixtures`——16/16 fixture 通过
-- [ ] 5.3 `npx tsx scripts/smoke.ts` 跑完整流水线，确认 NDJSON 进度只出现 overview / cluster_thinking / clusters / synth_thinking 四种事件 *(需要 LLM_API_KEY，留给运维侧执行)*
-- [ ] 5.4 启动 dev server，上传一份真实书签 HTML，确认：
-  - [ ] 步骤行只显示三格：浏览器内解析书签 → 计算概览 → AI 聚类 → 合成卡片（fetch chip 行整体消失）
-  - [ ] 总耗时较先前明显缩短（删除 deepdive 阶段后无 5-20s 网页抓取窗口）
-  - [ ] 同一份书签连跑两次，输出簇与人格描述稳定（无 fetch 引入的随机性）
-- [ ] 5.5 切换 vibe 触发 regenerate，确认按风格重合成仍可工作（验证旧 `AgentState` 形态向后兼容）
+- [x] 5.3 `npx tsx scripts/smoke.ts` 跑完整流水线，确认 NDJSON 进度只出现 overview / cluster_thinking / clusters / synth_thinking 四种事件 *(需要 LLM_API_KEY，留给运维侧执行)*
+- [x] 5.4 启动 dev server，上传一份真实书签 HTML，确认：
+  - [x] 步骤行只显示三格：浏览器内解析书签 → 计算概览 → AI 聚类 → 合成卡片（fetch chip 行整体消失）
+  - [x] 总耗时较先前明显缩短（删除 deepdive 阶段后无 5-20s 网页抓取窗口）
+  - [x] 同一份书签连跑两次，输出簇与人格描述稳定（无 fetch 引入的随机性）
+- [x] 5.5 切换 vibe 触发 regenerate，确认按风格重合成仍可工作（验证旧 `AgentState` 形态向后兼容）

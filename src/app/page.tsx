@@ -360,8 +360,23 @@ export default function Home() {
   }
 
   async function exportImage() {
-    if (!cardRef.current) return;
-    const url = await toPng(cardRef.current, { pixelRatio: 2 });
+    const node = cardRef.current;
+    if (!node) return;
+    // 等字体 + 一帧布局再量尺寸，并显式传 width/height/backgroundColor，
+    // 否则 html-to-image 默认的 offsetHeight 会比真实内容矮 1-2px，圆角外
+    // 又是透明，导出 PNG 顶部出现透明条带、底部被截断。详见 openspec change
+    // fix-export-image-truncation design.md。
+    await document.fonts?.ready;
+    await new Promise<void>((r) => requestAnimationFrame(() => r()));
+    const rect = node.getBoundingClientRect();
+    const width = Math.ceil(Math.max(rect.width, node.scrollWidth));
+    const height = Math.ceil(Math.max(rect.height, node.scrollHeight));
+    const url = await toPng(node, {
+      pixelRatio: 2,
+      width,
+      height,
+      backgroundColor: "#121420",
+    });
     const a = document.createElement("a");
     a.href = url;
     a.download = "我的互联网人格卡.png";
@@ -466,6 +481,12 @@ export default function Home() {
             }
           />
 
+          {!finished &&
+            phase === "thinking" &&
+            !!ovStat &&
+            clusterPrev.length === 0 &&
+            !clusterThinking && <LoadingHint phrases={CLUSTER_HINTS} />}
+
           {clusterThinking && (
             <div className="deep-panel">
               <div className="thinking">
@@ -483,6 +504,10 @@ export default function Home() {
             label="把碎片合成一张人格卡片"
           />
 
+          {!finished && stage === "synth" && !synthThinking && (
+            <LoadingHint phrases={SYNTH_HINTS} />
+          )}
+
           {synthThinking && (
             <div className="deep-panel">
               <div className="thinking">
@@ -494,16 +519,7 @@ export default function Home() {
             </div>
           )}
 
-          {clusterPrev.length > 0 && (
-            <div className="cluster-prev">
-              {clusterPrev.map((c) => (
-                <span key={c.name} className="chip">
-                  {c.name}
-                  <i>{c.size}</i>
-                </span>
-              ))}
-            </div>
-          )}
+          {clusterPrev.length > 0 && <ClusterChips clusters={clusterPrev} />}
         </div>
       )}
 
@@ -560,6 +576,73 @@ function Step({
     <div className={"step" + (done ? " done" : on ? " active" : "")}>
       <span className="dot" />
       {label}
+    </div>
+  );
+}
+
+// 首 token 到达前的"死区"占位：agent 用第一人称轮播自言自语，
+// 撑过模型沉默的 5-15s。一旦真实 thinking 文本开始流，立即被替换。
+const CLUSTER_HINTS = [
+  "正在统计反复出现的站点……",
+  "看哪些主题总在你的列表里同框……",
+  "把相似话题悄悄靠拢……",
+];
+const SYNTH_HINTS = [
+  "正在归纳主线……",
+  "找一个能容下你多重身份的词……",
+  "试着写一行能当签名的句子……",
+];
+
+function LoadingHint({ phrases }: { phrases: string[] }) {
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    const id = setInterval(
+      () => setIdx((i) => (i + 1) % phrases.length),
+      2200,
+    );
+    return () => clearInterval(id);
+  }, [phrases.length]);
+  return (
+    <div className="load-hint">
+      {phrases.map((p, i) => (
+        <span
+          key={i}
+          className={"load-hint-line" + (i === idx ? " on" : "")}
+        >
+          {p}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// 兴趣簇标签：按数量降序、"其他"永远置底；视觉权重随占比分三档，
+// 避免所有 chip 看起来同样重要导致信息层级缺失。
+function ClusterChips({ clusters }: { clusters: ClusterPreview[] }) {
+  const isOther = (n: string) => n.startsWith("其他") || n.startsWith("其它");
+  const sorted = [...clusters].sort((a, b) => {
+    const ao = isOther(a.name) ? 1 : 0;
+    const bo = isOther(b.name) ? 1 : 0;
+    if (ao !== bo) return ao - bo;
+    return b.size - a.size;
+  });
+  const sizes = sorted.filter((c) => !isOther(c.name)).map((c) => c.size);
+  const maxSize = sizes.length ? Math.max(...sizes) : 1;
+  const tierOf = (c: ClusterPreview) => {
+    if (isOther(c.name)) return "other";
+    const r = c.size / maxSize;
+    if (r >= 0.7) return "primary";
+    if (r >= 0.3) return "secondary";
+    return "minor";
+  };
+  return (
+    <div className="cluster-prev">
+      {sorted.map((c) => (
+        <span key={c.name} className={`chip chip-${tierOf(c)}`}>
+          {c.name}
+          <i>{c.size}</i>
+        </span>
+      ))}
     </div>
   );
 }

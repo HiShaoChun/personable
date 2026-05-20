@@ -97,6 +97,25 @@ a { color: var(--accent2); }
 .step.done .dot { background: var(--accent2); }
 @keyframes pulse { 50% { opacity: .35; } }
 
+/* agent 首 token 到达前的占位轮播；位置与 deep-panel 对齐，
+   多句叠在同一行用 opacity 切换，避免高度抖动。 */
+.load-hint {
+  position: relative;
+  margin: 8px 0 4px 19px;
+  min-height: 1.6em;
+  color: var(--muted);
+  font-size: 13px;
+  font-style: italic;
+}
+.load-hint-line {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.load-hint-line.on { opacity: 1; }
+
 /* 渐进式：簇预览在合成完成前先出现，掩盖时延 */
 .cluster-prev { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 4px 19px; }
 .chip {
@@ -108,6 +127,30 @@ a { color: var(--accent2); }
 }
 .chip i { color: var(--muted); font-style: normal; font-size: 11px; }
 @keyframes chipin { from { opacity: 0; transform: translateY(4px); } }
+
+/* 视觉权重分档：让"主簇 / 次簇 / 边缘 / 兜底"一眼可分。
+   primary 用实色强调；minor / other 用更弱的对比退到背景。 */
+.chip.chip-primary {
+  background: #2a2748;
+  border-color: #4a4373;
+  font-weight: 600;
+}
+.chip.chip-primary i { color: #b8b0d8; font-weight: 500; }
+.chip.chip-secondary { background: #20243a; border-color: #3a3f55; }
+.chip.chip-minor {
+  background: transparent;
+  border-color: #2a2f44;
+  color: var(--muted);
+  opacity: 0.78;
+}
+.chip.chip-minor i { color: #6b7180; }
+.chip.chip-other {
+  background: transparent;
+  border: 1px dashed #3a3f55;
+  color: var(--muted);
+  opacity: 0.72;
+}
+.chip.chip-other i { color: #6b7180; }
 
 /* 深挖阶段：agent 推理文本 + 抓取 chip 状态机 */
 .deep-panel {
