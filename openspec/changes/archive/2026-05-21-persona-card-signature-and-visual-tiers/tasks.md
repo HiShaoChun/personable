@@ -25,18 +25,18 @@
 - [x] 4.1 在 `src/app/globals.css` 现有 `.cluster .bar` 行附近加 `.bar--main / .bar--side / .bar--extra` 三个修饰类，按 design.md Decision 5 的规格
 - [x] 4.2 加 `.rank--main { color: #f5c97a; } .rank--side { color: #c0c6d8; }`；番外保持继承 `.rank` 默认 muted 色
 - [x] 4.3 加 `.quote` 样式：font-size 14-15px、color 介于 `--ink` 与 `--muted` 之间（如 `#c8cee0`）、`font-style: italic`、`margin: 6px 0 4px`、`line-height: 1.5`
-- [ ] 4.4 在浏览器手动核对：reveal=first 入场动效里 quote 不闪烁、与其它 card-elem 同节奏淡入
+- [x] 4.4 在浏览器手动核对：reveal=first 入场动效里 quote 不闪烁、与其它 card-elem 同节奏淡入
 
 ## 5. 示例与共享展示
 
 - [x] 5.1 在 `src/lib/samples.ts` 给 `SAMPLE_EARNEST / SAMPLE_ROAST / SAMPLE_POETIC` 三份示例分别补 `signatureQuote`，确保三种语气差异肉眼可辨（earnest 真诚直白、roast 自嘲毒舌、poetic 意象比喻）
-- [ ] 5.2 手动跑 `npm run dev`，确认首页 idle 态 SampleGallery 三张卡都显示新签名台词且三档进度条视觉区分明显
-- [ ] 5.3 用一张旧的 share 链接（或临时构造一份不含 `signatureQuote` 的 profile JSON 塞进 localStorage）验证降级：quote 段不渲染、进度条新视觉仍生效
+- [x] 5.2 手动跑 `npm run dev`，确认首页 idle 态 SampleGallery 三张卡都显示新签名台词且三档进度条视觉区分明显
+- [x] 5.3 用一张旧的 share 链接（或临时构造一份不含 `signatureQuote` 的 profile JSON 塞进 localStorage）验证降级：quote 段不渲染、进度条新视觉仍生效
 
 ## 6. 验证
 
 - [x] 6.1 `npm run lint` 通过 — **偏离记录**：项目 package.json 无 `lint` script；改跑 `npm run typecheck`（= `tsc --noEmit`）通过
 - [x] 6.2 `npm run build` 通过（含类型检查）
-- [ ] 6.3 用真实书签跑一次端到端，确认 LLM 实际产出的 `signatureQuote` 落进卡面、符合长度与"含具体所指"约束
-- [ ] 6.4 切换 vibe 重生成一次，确认 quote 随 vibe 切换、风格差异明显（earnest vs roast）
-- [ ] 6.5 用 `html-to-image` 导出 PNG，确认金色 glow 在导出图里无明显抖动；若有，按 design.md 提示降级为 inset border
+- [x] 6.3 用真实书签跑一次端到端，确认 LLM 实际产出的 `signatureQuote` 落进卡面、符合长度与"含具体所指"约束
+- [x] 6.4 切换 vibe 重生成一次，确认 quote 随 vibe 切换、风格差异明显（earnest vs roast）
+- [x] 6.5 用 `html-to-image` 导出 PNG，确认金色 glow 在导出图里无明显抖动；若有，按 design.md 提示降级为 inset border

@@ -97,24 +97,22 @@ a { color: var(--accent2); }
 .step.done .dot { background: var(--accent2); }
 @keyframes pulse { 50% { opacity: .35; } }
 
-/* agent 首 token 到达前的占位轮播；位置与 deep-panel 对齐，
-   多句叠在同一行用 opacity 切换，避免高度抖动。 */
+/* agent 首 token 到达前的占位轮播；位置与 deep-panel 对齐。
+   每次轮换靠 React key 重挂载触发 fade-in 动画。 */
 .load-hint {
-  position: relative;
   margin: 8px 0 4px 19px;
   min-height: 1.6em;
   color: var(--muted);
   font-size: 13px;
-  font-style: italic;
 }
 .load-hint-line {
-  position: absolute;
-  left: 0;
-  top: 0;
-  opacity: 0;
-  transition: opacity 0.4s ease;
+  display: inline-block;
+  animation: hintFade 0.35s ease both;
 }
-.load-hint-line.on { opacity: 1; }
+@keyframes hintFade {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 /* 渐进式：簇预览在合成完成前先出现，掩盖时延 */
 .cluster-prev { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 4px 19px; }
@@ -238,7 +236,52 @@ a { color: var(--accent2); }
 .evo div { margin: 10px 0; }
 .evo b { color: var(--accent2); }
 .disc { color: var(--muted); font-size: 12px; margin-top: 22px; }
-.toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; align-items: center; }
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 24px;
+  align-items: stretch;
+}
+.toolbar-primary {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.toolbar-vibes {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.vibes-label {
+  color: var(--muted);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+.vibes-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.privacy-link {
+  color: var(--muted);
+  font-size: 13px;
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.18);
+  padding-bottom: 1px;
+}
+.privacy-link:hover { color: var(--ink); border-bottom-color: rgba(255, 255, 255, 0.4); }
+.btn.ghost.current {
+  background: #2a3150;
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px rgba(124, 140, 255, 0.55);
+  opacity: 1;
+  cursor: default;
+}
 .err { color: #ff8585; margin-top: 16px; }
 .note { color: var(--muted); font-size: 13px; margin-top: 12px; }
 .site-footer { max-width: 760px; margin: 0 auto; padding: 24px 20px 40px; color: var(--muted); font-size: 13px; text-align: center; }

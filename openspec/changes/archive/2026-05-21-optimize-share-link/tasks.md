@@ -12,9 +12,9 @@
 
 ## 3. 验证
 
-- [ ] 3.1 本地跑 `npm run dev`，生成一张卡 → 点复制 → 粘贴到记事本，确认得到「【书签人格卡】<headline> http://localhost:3000/persona/<id>」单行格式
-- [ ] 3.2 浏览器访问旧 `/c/<id>`，确认 308 重定向到 `/persona/<id>` 并正常渲染
-- [ ] 3.3 直接访问 `/persona/<id>`，确认渲染正常
-- [ ] 3.4 用一个不存在的 id 访问 `/persona/<不存在>`，确认"已过期或不存在"页面正常
-- [ ] 3.5 在不支持 clipboard 的环境模拟失败（或临时改代码抛错），确认 fallback note 显示带前缀的完整文本
+- [x] 3.1 本地跑 `npm run dev`，生成一张卡 → 点复制 → 粘贴到记事本，确认得到「【书签人格卡】<headline> http://localhost:3000/persona/<id>」单行格式
+- [x] 3.2 浏览器访问旧 `/c/<id>`，确认 308 重定向到 `/persona/<id>` 并正常渲染
+- [x] 3.3 直接访问 `/persona/<id>`，确认渲染正常
+- [x] 3.4 用一个不存在的 id 访问 `/persona/<不存在>`，确认"已过期或不存在"页面正常
+- [x] 3.5 在不支持 clipboard 的环境模拟失败（或临时改代码抛错），确认 fallback note 显示带前缀的完整文本
 - [x] 3.6 `npm run typecheck` 通过；`npm run build` 编译阶段通过（写 `.next/trace` 被本地 dev server 锁文件，非代码问题）；项目无 `lint` 脚本，故跳过

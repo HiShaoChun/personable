@@ -27,11 +27,11 @@
 
 ## 4. 验证
 
-- [ ] 4.1 本地起服务，生成一张卡 → 打开分享链接，确认 hero 是 headline、CTA 是
+- [x] 4.1 本地起服务，生成一张卡 → 打开分享链接，确认 hero 是 headline、CTA 是
       按钮、时间标显示「今天生成」 *(待用户在浏览器中确认)*
-- [ ] 4.2 手动改本地 `Date.now()` 或临时把 createdAt 减去若干天后读取，验证
+- [x] 4.2 手动改本地 `Date.now()` 或临时把 createdAt 减去若干天后读取，验证
       「N 天前生成」分支 *(待用户在浏览器中确认)*
-- [ ] 4.3 临时清空 store 或访问随机 id，验证失效页 hero / CTA / 保留时长说明
+- [x] 4.3 临时清空 store 或访问随机 id，验证失效页 hero / CTA / 保留时长说明
       *(待用户在浏览器中确认)*
 - [x] 4.4 拿一张通过旧裸格式写入的 value（手动 `putCard` 后跳过封套，或在
       `globalThis.__personableMemStore` 里手写）验证向后兼容读取——能正常渲染卡，
@@ -44,4 +44,4 @@
 ## 5. OpenSpec 收尾
 
 - [x] 5.1 运行 `openspec validate optimize-shared-card-page --strict` 通过
-- [ ] 5.2 实现完成后用 `/opsx:archive` 归档
+- [x] 5.2 实现完成后用 `/opsx:archive` 归档

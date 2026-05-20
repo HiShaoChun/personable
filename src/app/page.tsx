@@ -1,6 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
-import { toPng } from "html-to-image";
+import { useEffect, useState } from "react";
 import {
   parseRawEntries,
   normalizeAndDedupe,
@@ -77,7 +76,23 @@ export default function Home() {
   // 聚类 / 合成两步分别流式吐思考文本，让用户看到 agent 在干活
   const [clusterThinking, setClusterThinking] = useState("");
   const [synthThinking, setSynthThinking] = useState("");
-  const cardRef = useRef<HTMLDivElement>(null);
+  // "停顿"判定：模型 thinking 文本停止增长超过 HINT_IDLE_MS 后转为 true。
+  // 用来在 thinking 流结束、结果未到的那段静默期触发占位 hint 轮播。
+  const [clusterIdle, setClusterIdle] = useState(false);
+  const [synthIdle, setSynthIdle] = useState(false);
+  // 每次 thinking 文本变化都重置定时器：有新 delta 时立刻判定为"不停顿"，
+  // 静默到 HINT_IDLE_MS 后再翻为"停顿"。初次渲染（文本仍为空）也会启动定时器，
+  // 让首 token 死区在 1.5s 后也能进入 hint 状态。
+  useEffect(() => {
+    setClusterIdle(false);
+    const id = setTimeout(() => setClusterIdle(true), HINT_IDLE_MS);
+    return () => clearTimeout(id);
+  }, [clusterThinking]);
+  useEffect(() => {
+    setSynthIdle(false);
+    const id = setTimeout(() => setSynthIdle(true), HINT_IDLE_MS);
+    return () => clearTimeout(id);
+  }, [synthThinking]);
 
   // 挂载时尝试从 localStorage 恢复上一次的终态：损坏/过版本/字段缺失一律
   // 静默删除记录并保持 idle。详见 openspec change
@@ -142,6 +157,15 @@ export default function Home() {
       const entries = normalizeAndDedupe(parseRawEntries(html));
       if (entries.length === 0) {
         setErr("没解析到任何有效书签。");
+        setPhase("idle");
+        return;
+      }
+      // 与 schema.ts 簇密度硬阈值 max(3, ceil(total*5%)) 对齐：少于 3 条
+      // 没有任何簇能过滤，画像必然校验失败。在入口拦截，避免无效 LLM 调用。
+      if (entries.length < 3) {
+        setErr(
+          `至少需要 3 条书签才能生成画像（当前 ${entries.length} 条）。`
+        );
         setPhase("idle");
         return;
       }
@@ -359,30 +383,6 @@ export default function Home() {
     }
   }
 
-  async function exportImage() {
-    const node = cardRef.current;
-    if (!node) return;
-    // 等字体 + 一帧布局再量尺寸，并显式传 width/height/backgroundColor，
-    // 否则 html-to-image 默认的 offsetHeight 会比真实内容矮 1-2px，圆角外
-    // 又是透明，导出 PNG 顶部出现透明条带、底部被截断。详见 openspec change
-    // fix-export-image-truncation design.md。
-    await document.fonts?.ready;
-    await new Promise<void>((r) => requestAnimationFrame(() => r()));
-    const rect = node.getBoundingClientRect();
-    const width = Math.ceil(Math.max(rect.width, node.scrollWidth));
-    const height = Math.ceil(Math.max(rect.height, node.scrollHeight));
-    const url = await toPng(node, {
-      pixelRatio: 2,
-      width,
-      height,
-      backgroundColor: "#121420",
-    });
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "我的互联网人格卡.png";
-    a.click();
-  }
-
   async function copyShare() {
     if (!ids) return;
     const link = `${location.origin}/persona/${ids.id}`;
@@ -481,12 +481,6 @@ export default function Home() {
             }
           />
 
-          {!finished &&
-            phase === "thinking" &&
-            !!ovStat &&
-            clusterPrev.length === 0 &&
-            !clusterThinking && <LoadingHint phrases={CLUSTER_HINTS} />}
-
           {clusterThinking && (
             <div className="deep-panel">
               <div className="thinking">
@@ -498,15 +492,17 @@ export default function Home() {
             </div>
           )}
 
+          {!finished &&
+            phase === "thinking" &&
+            !!ovStat &&
+            clusterPrev.length === 0 &&
+            clusterIdle && <LoadingHint phrases={CLUSTER_HINTS} />}
+
           <Step
             on={!finished && stage === "synth"}
             done={finished}
             label="把碎片合成一张人格卡片"
           />
-
-          {!finished && stage === "synth" && !synthThinking && (
-            <LoadingHint phrases={SYNTH_HINTS} />
-          )}
 
           {synthThinking && (
             <div className="deep-panel">
@@ -517,6 +513,10 @@ export default function Home() {
                 )}
               </div>
             </div>
+          )}
+
+          {!finished && stage === "synth" && synthIdle && (
+            <LoadingHint phrases={SYNTH_HINTS} />
           )}
 
           {clusterPrev.length > 0 && <ClusterChips clusters={clusterPrev} />}
@@ -531,32 +531,36 @@ export default function Home() {
           <PersonaCard
             key={ids?.id ?? "initial"}
             profile={profile}
-            innerRef={cardRef}
             reveal={reveal}
             onRevealEnd={() => setReveal("none")}
           />
           <div className={"toolbar" + (reveal === "none" ? "" : ` reveal-${reveal}`)}>
-            <button className="btn" onClick={exportImage}>
-              保存为图片
-            </button>
-            <button className="btn ghost" onClick={copyShare}>
-              {copied ? "已复制" : "复制分享链接"}
-            </button>
-            <span style={{ color: "var(--muted)", fontSize: 13 }}>换个风格：</span>
-            {VIBES.map((v) => (
-              <button
-                key={v}
-                className="btn ghost"
-                disabled={busyVibe !== null || v === profile.vibe}
-                onClick={() => regenerate(v)}
-              >
-                {busyVibe === v ? "生成中…" : VIBE_LABEL[v]}
+            <div className="toolbar-primary">
+              <button className="btn" onClick={copyShare}>
+                {copied ? "已复制" : "复制分享链接"}
               </button>
-            ))}
+              <a className="privacy-link" href="/privacy">数据怎么处理？</a>
+            </div>
+            <div className="toolbar-vibes">
+              <span className="vibes-label">换个风格</span>
+              <div className="vibes-group">
+                {VIBES.map((v) => {
+                  const isCurrent = v === profile.vibe;
+                  return (
+                    <button
+                      key={v}
+                      className={"btn ghost" + (isCurrent ? " current" : "")}
+                      disabled={busyVibe !== null || isCurrent}
+                      aria-pressed={isCurrent}
+                      onClick={() => regenerate(v)}
+                    >
+                      {busyVibe === v ? "生成中…" : VIBE_LABEL[v]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-          <p className="note">
-            <a href="/privacy">数据怎么处理？</a>
-          </p>
         </>
       )}
     </main>
@@ -580,8 +584,9 @@ function Step({
   );
 }
 
-// 首 token 到达前的"死区"占位：agent 用第一人称轮播自言自语，
-// 撑过模型沉默的 5-15s。一旦真实 thinking 文本开始流，立即被替换。
+// agent thinking 流结束、JSON 还在后台生成的静默期占位轮播。
+// HINT_IDLE_MS 是判定"停顿"的阈值：文本停止增长超过此时长则切到 hint。
+const HINT_IDLE_MS = 1500;
 const CLUSTER_HINTS = [
   "正在统计反复出现的站点……",
   "看哪些主题总在你的列表里同框……",
@@ -602,16 +607,12 @@ function LoadingHint({ phrases }: { phrases: string[] }) {
     );
     return () => clearInterval(id);
   }, [phrases.length]);
+  // key 跟随 idx 变化触发重挂载，让 CSS 入场动画在每次切换时重新跑。
   return (
     <div className="load-hint">
-      {phrases.map((p, i) => (
-        <span
-          key={i}
-          className={"load-hint-line" + (i === idx ? " on" : "")}
-        >
-          {p}
-        </span>
-      ))}
+      <span key={idx} className="load-hint-line">
+        {phrases[idx]}
+      </span>
     </div>
   );
 }

@@ -1,0 +1,79 @@
+<!DOCTYPE NETSCAPE-Bookmark-file-1>
+<!-- 含"不好的网站"与各种坏数据的边界用例：
+     - 应被解析器剔除：javascript:/chrome://、file://、ftp:// 等非 http(s) URL
+     - 应被剔除：损坏的 anchor / 缺 href
+     - 应保留但考验下游分类：成人/赌博/盗版/可疑下载站
+     - 应保留：空标题、超长标题、HTML 实体、重复 URL（不同文件夹合并）、缺失 ADD_DATE -->
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
+<TITLE>Bookmarks</TITLE>
+<H1>Bookmarks</H1>
+<DL><p>
+    <DT><H3 ADD_DATE="1700000000">书签栏</H3>
+    <DL><p>
+        <DT><H3 ADD_DATE="1700000000">奇怪的协议（应被剔除）</H3>
+        <DL><p>
+            <DT><A HREF="javascript:alert('xss')" ADD_DATE="1700000100">javascript 伪协议</A>
+            <DT><A HREF="chrome://settings" ADD_DATE="1700000200">Chrome 设置</A>
+            <DT><A HREF="file:///C:/Users/me/secret.txt" ADD_DATE="1700000300">本地文件</A>
+            <DT><A HREF="ftp://ftp.example.com/pub" ADD_DATE="1700000400">FTP 站点</A>
+            <DT><A HREF="about:blank" ADD_DATE="1700000500">空白页</A>
+            <DT><A HREF="data:text/html,<script>1</script>">data URL</A>
+            <DT><A HREF="not-a-valid-url-at-all">非 URL</A>
+        </DL><p>
+
+        <DT><H3 ADD_DATE="1700100000">破损的标记（应被跳过）</H3>
+        <DL><p>
+            <DT><A>缺 href 的链接</A>
+            <DT><A HREF=>空 href</A>
+            <DT><A HREF="https://broken.example.com" 未闭合的标签
+        </DL><p>
+
+        <DT><H3 ADD_DATE="1700200000">成人 / 18+（考验分类与隐私）</H3>
+        <DL><p>
+            <DT><A HREF="https://www.pornhub.com" ADD_DATE="1700200100">Pornhub</A>
+            <DT><A HREF="https://xhamster.com" ADD_DATE="1700200200">xHamster</A>
+            <DT><A HREF="https://www.onlyfans.com/somecreator" ADD_DATE="1700200300">OnlyFans Creator</A>
+            <DT><A HREF="https://nhentai.net/g/123456/" ADD_DATE="1700200400">nhentai 某本</A>
+        </DL><p>
+
+        <DT><H3 ADD_DATE="1700300000">赌博 / 博彩</H3>
+        <DL><p>
+            <DT><A HREF="https://www.bet365.com" ADD_DATE="1700300100">Bet365</A>
+            <DT><A HREF="https://www.pokerstars.com" ADD_DATE="1700300200">PokerStars</A>
+            <DT><A HREF="https://www.888casino.com" ADD_DATE="1700300300">888 Casino</A>
+        </DL><p>
+
+        <DT><H3 ADD_DATE="1700400000">盗版 / 灰产</H3>
+        <DL><p>
+            <DT><A HREF="https://thepiratebay.org" ADD_DATE="1700400100">The Pirate Bay</A>
+            <DT><A HREF="https://1337x.to" ADD_DATE="1700400200">1337x</A>
+            <DT><A HREF="https://sci-hub.se" ADD_DATE="1700400300">Sci-Hub</A>
+            <DT><A HREF="https://z-lib.io" ADD_DATE="1700400400">Z-Library</A>
+            <DT><A HREF="https://nyaa.si" ADD_DATE="1700400500">Nyaa</A>
+        </DL><p>
+
+        <DT><H3 ADD_DATE="1700500000">可疑下载站 / 钓鱼风格</H3>
+        <DL><p>
+            <DT><A HREF="http://download-free-software-now.tk/setup.exe" ADD_DATE="1700500100">免费 Windows 激活工具.exe</A>
+            <DT><A HREF="http://paypa1-security-check.com/login" ADD_DATE="1700500200">PayPal 安全验证</A>
+            <DT><A HREF="http://192.168.1.1/admin" ADD_DATE="1700500300">路由器后台</A>
+            <DT><A HREF="https://very-long-suspicious-subdomain-name-pretending-to-be.google.com.evil.example.org" ADD_DATE="1700500400">谷歌账户验证</A>
+        </DL><p>
+
+        <DT><H3 ADD_DATE="1700600000">怪异内容（合法但考验文本处理）</H3>
+        <DL><p>
+            <DT><A HREF="https://example.com/empty-title"></A>
+            <DT><A HREF="https://example.com/very-long" ADD_DATE="1700600100">这是一个超级超级超级超级超级超级超级超级超级超级超级超级超级超级超级超级超级超级超级超级超级超级长的标题用来测试 UI 截断行为</A>
+            <DT><A HREF="https://example.com/entities" ADD_DATE="1700600200">A &amp; B &lt;tag&gt; &quot;quoted&quot; &#39;single&#39;</A>
+            <DT><A HREF="https://example.com/emoji" ADD_DATE="1700600300">🔥 Emoji 标题 🚀 测试</A>
+            <DT><A HREF="https://example.com/no-date">缺 ADD_DATE 的条目</A>
+            <DT><A HREF="https://github.com" ADD_DATE="1700600400">GitHub（与下一个文件夹里重复）</A>
+        </DL><p>
+
+        <DT><H3 ADD_DATE="1700700000">重复 URL（应合并、记录两个 folderPath）</H3>
+        <DL><p>
+            <DT><A HREF="https://github.com" ADD_DATE="1700700100">GitHub</A>
+            <DT><A HREF="https://example.com/entities" ADD_DATE="1700700200">实体重复条目</A>
+        </DL><p>
+    </DL><p>
+</DL><p>
