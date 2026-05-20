@@ -46,8 +46,8 @@ export const config = {
   fetchMaxBytes: num("FETCH_MAX_BYTES", 1_500_000),
 
   // 模型（DashScope 通义千问）。单提供方，分流/合成默认同一模型，可分别覆盖。
-  modelTriage: str("MODEL_TRIAGE", "qwen-plus"),
-  modelSynthesis: str("MODEL_SYNTHESIS", "qwen3.5-plus"),
+  modelTriage: str("MODEL_TRIAGE", "qwen-turbo"),
+  modelSynthesis: str("MODEL_SYNTHESIS", "qwen-plus"),
 
   // 限流
   rateLimitWindowMs: num("RATE_LIMIT_WINDOW_MS", 600_000),

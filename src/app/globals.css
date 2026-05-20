@@ -116,3 +116,126 @@ a { color: var(--accent2); }
 .site-footer { max-width: 760px; margin: 0 auto; padding: 24px 20px 40px; color: var(--muted); font-size: 13px; text-align: center; }
 .site-footer a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
 .site-footer a:hover { color: var(--accent2); }
+
+/* 首页 idle 示例画廊：拖拽区下方以扇形展示三张预制 vibe 卡，
+   像扑克牌从底部一个枢轴向外扇开。spec: homepage-samples。
+   每张卡 position:absolute 不参与父布局尺寸计算，避免内部 640px 缩放
+   元素撑爆 .wrap 的 760px 上限。 */
+.samples { margin-top: 40px; }
+.samples-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.samples-head h3 { font-size: 16px; font-weight: 600; color: var(--ink); }
+.samples-hint { color: var(--muted); font-size: 12px; text-align: center; margin-top: 6px; }
+
+/* 扇形容器：固定高度承载 absolute 子元素 + 留出旋转后的伸展空间。 */
+.samples-fan {
+  position: relative;
+  height: 360px;
+  max-width: 560px;
+  margin: 12px auto 0;
+}
+.fan-card {
+  position: absolute;
+  bottom: 12px;
+  width: 220px;
+  height: 300px;
+  padding: 0;
+  background: var(--panel);
+  border: 1.5px solid #2a2f44;
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .35);
+  transition: transform .35s cubic-bezier(.2,.8,.2,1),
+              box-shadow .35s, border-color .2s;
+}
+/* 三张卡共享一个"底部枢轴带"：左卡绕右下角转、中卡绕底中转、右卡绕左下角转，
+   形成扇形感。z-index 让中卡在最前。 */
+.fan-card-0 {
+  left: calc(50% - 240px);
+  transform: rotate(-12deg);
+  transform-origin: 100% 100%;
+  z-index: 1;
+}
+.fan-card-1 {
+  left: calc(50% - 110px);
+  transform: rotate(0deg);
+  transform-origin: 50% 100%;
+  z-index: 2;
+}
+.fan-card-2 {
+  left: calc(50% + 20px);
+  transform: rotate(12deg);
+  transform-origin: 0% 100%;
+  z-index: 1;
+}
+
+.fan-card:hover {
+  transform: rotate(0) translateY(-14px) scale(1.03);
+  z-index: 5;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .45);
+}
+.fan-card.selected {
+  transform: rotate(0) translateY(-22px) scale(1.06);
+  z-index: 10;
+  border-color: var(--accent);
+  box-shadow: 0 22px 50px rgba(124, 92, 255, .35);
+}
+
+.fan-vibe {
+  position: absolute;
+  top: 10px; left: 10px;
+  z-index: 2;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  background: rgba(32, 36, 58, .9);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 3px 9px;
+  backdrop-filter: blur(4px);
+}
+.fan-card.selected .fan-vibe { background: var(--accent); color: #fff; }
+
+/* 缩略层：让 PersonaCard 以 640px 原宽渲染，再用 transform 缩到卡片可视尺寸。
+   pointer-events:none 让点击穿透到外层 button。 */
+.fan-card-inner {
+  width: 100%; height: 100%;
+  pointer-events: none;
+}
+.fan-card-scale {
+  width: 640px;
+  transform: scale(0.344);
+  transform-origin: top left;
+}
+.fan-card-scale .card,
+.sample-expanded .card { margin-top: 0; }
+
+/* 移动端：扇形挤不下，退回纵向堆叠。 */
+@media (max-width: 640px) {
+  .samples-fan {
+    height: auto;
+    max-width: none;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: center;
+  }
+  .fan-card,
+  .fan-card-0,
+  .fan-card-1,
+  .fan-card-2 {
+    position: relative;
+    left: auto; bottom: auto;
+    width: 100%; max-width: 360px; height: 360px;
+    transform: none;
+    transform-origin: center;
+  }
+  .fan-card:hover,
+  .fan-card.selected {
+    transform: translateY(-4px);
+  }
+  .fan-card-scale { transform: scale(0.55); }
+}
+
+.sample-expanded { margin-top: 28px; }

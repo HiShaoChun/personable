@@ -9,6 +9,7 @@ import {
 import { stratifiedSample, DEFAULT_MAX_ENTRIES } from "@/lib/bookmarks/sample";
 import { VIBES, VIBE_LABEL, type Vibe } from "@/lib/vibes";
 import PersonaCard from "@/components/PersonaCard";
+import SampleGallery from "@/components/SampleGallery";
 import type { PersonaProfile } from "@/lib/agent/schema";
 
 const STORAGE_KEY = "personable:last";
@@ -434,7 +435,6 @@ export default function Home() {
       <h1>书签人格卡</h1>
       <p className="sub">
         拖入你的 Chrome 书签导出文件，AI 解读你的互联网人格，生成一张可分享的卡片。
-        文件在浏览器内解析，<b>原始文件不会上传</b>。
       </p>
 
       {phase === "idle" && (
@@ -466,6 +466,10 @@ export default function Home() {
           />
         </div>
       )}
+
+      {/* 仅在「全新访客」视图（idle 且无持久化恢复态）展示示例画廊。
+          spec: homepage-samples「与主流程可见性互斥」。 */}
+      {phase === "idle" && !profile && <SampleGallery />}
 
       {phase !== "idle" && (
         <div className="steps">
