@@ -53,14 +53,24 @@ profile JSON 同时被三处消费：实时主流程（[page.tsx](../../../src/a
 
 ### Decision 5: 三档视觉具体规格
 
-- `bar--main`：高 10px（比基线高 2px），渐变 `linear-gradient(90deg, #f5c97a, #f8e8a0, #f5c97a)`（金色），叠加 `box-shadow: 0 0 12px rgba(245, 201, 122, 0.35)` 的柔光
-- `bar--side`：高 8px（基线），渐变 `linear-gradient(90deg, #a8b1c8, #d6dae8)`（银/灰）
-- `bar--extra`：高 4px、纯色 `#4a5070`、`opacity: 0.85`、无阴影。仍是"条"，但更细更哑，明确处在最末档
-- 右上角 `.rank` 文字颜色：主线 `#f5c97a`、副线 `#c0c6d8`、番外保持现有 `--muted`
+**当前规格（v3，2026-05-20 复盘后定稿）：**
 
-**Why such specific colors:** 金/银/暗灰是收集卡通用的稀有度色阶，读者不需要解释就能理解优先级；同时和现有紫青主色拉开距离，不破坏卡面的整体冷色调（金色仅出现在主线，是焦点）。
+- `bar--main`：高 10px、`border-radius: 5px`、渐变 `linear-gradient(90deg, #f5c97a, #f8e8a0, #f5c97a)`（金色），`box-shadow: 0 0 12px rgba(245, 201, 122, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)`（外柔光 + 顶部 inset 高光，制造体积感）
+- `bar--side`：高 8px、`border-radius: 4px`、品牌渐变 `linear-gradient(90deg, var(--accent), var(--accent2))`（紫→青）、`opacity: 0.9`、无阴影
+- `bar--extra`：高 6px、`border-radius: 3px`、同品牌渐变、`opacity: 0.35`、无阴影，并叠 `mask-image: linear-gradient(90deg, #000 60%, transparent)` 让右端渐隐，强化"衰减"语义
+- 右上角 `.rank` 文字颜色：主线 `#f5c97a`、副线 `var(--accent2)`（青）、番外保持现有 `--muted`
+- 所有 bar 的 `border-radius` 严格等于 `height/2`，避免低高度 + 大圆角变成胶囊
 
-**Why 番外 不用虚线：** 首版用 `border-top: 2px dashed` 打破了"进度条"的视觉语言，读者会误把它当分隔线而非"最末档进度条"。改成"短而暗的实心条"后，三档共享同一套"条"的视觉，差异只在高度 / 亮度 / 是否发光，层级感反而更清晰。
+**Why this palette (v3):**
+1. **主线金色保留为唯一"逸出"品牌色的焦点元素**——读者扫到它立刻知道这是 the one 主线，金色 + 顶部高光给出"奖励 / 罕见"心智
+2. **副线 / 番外回到品牌紫青渐变**——卡片整体色调统一，进度条区域不再像"换了一个产品"；金色因此更突出
+3. **番外用同一渐变但叠 35% 不透明 + 右端 mask 渐隐**——传达"同源但衰减"，番外档内部依旧可读，但视觉重量明显低于副线
+
+**Decision history（保留以供归档参考）：**
+
+- **v1（初版）**：金 / 银 / 蓝灰虚线。问题：番外的 `border-top: 2px dashed` 读起来像分隔线，不像进度条
+- **v2（虚线→实心条）**：金 / 银 / 暗蓝灰实心条。问题：副线银色、番外蓝灰都是脱离品牌色的新色相，进度条区域和卡片主色调断层；冷暖断层（金→蓝灰）；番外档真实数据里出现频率高（多个 cluster 都低于 50% 阈值），5 条同色同高的蓝灰条没有内部差异
+- **v3（当前）**：保留金色作为"焦点逸出"，副 / 番外回到品牌紫青色系靠 opacity 拉开层级
 
 ### Decision 6: signatureQuote 长度上限 28 字（按 `[...str].length` 计 codepoint）
 

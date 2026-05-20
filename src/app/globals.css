@@ -158,29 +158,37 @@ a { color: var(--accent2); }
 .tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0; }
 .tag { background: #262b40; color: var(--ink); padding: 5px 12px; border-radius: 999px; font-size: 13px; }
 .cluster { margin: 12px 0; }
-.cluster .bar { height: 8px; border-radius: 6px; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
-/* 三档差异化进度条：主线金光、副线银灰、番外细虚线。
-   openspec change persona-card-signature-and-visual-tiers Decision 5。 */
+.cluster .bar { height: 8px; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+/* 三档差异化进度条：主线金光焦点、副线品牌渐变、番外品牌渐变低透明 + 右端渐隐。
+   只有主线"逸出"品牌色用金色，副 / 番外回到 --accent / --accent2 维持卡片整体色调统一。
+   border-radius = height/2 保持比例。openspec change persona-card-signature-and-visual-tiers Decision 5。 */
 .cluster .bar--main {
   height: 10px;
+  border-radius: 5px;
   background: linear-gradient(90deg, #f5c97a, #f8e8a0, #f5c97a);
-  box-shadow: 0 0 12px rgba(245, 201, 122, 0.35);
+  box-shadow: 0 0 12px rgba(245, 201, 122, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 .cluster .bar--side {
   height: 8px;
-  background: linear-gradient(90deg, #a8b1c8, #d6dae8);
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  opacity: 0.9;
   box-shadow: none;
 }
 .cluster .bar--extra {
-  height: 4px;
-  background: #4a5070;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  opacity: 0.35;
   box-shadow: none;
-  opacity: 0.85;
+  /* 右端再 mask 一次，营造渐隐衰减感（不依赖 currentColor，跨浏览器更稳）。 */
+  -webkit-mask-image: linear-gradient(90deg, #000 60%, transparent);
+  mask-image: linear-gradient(90deg, #000 60%, transparent);
 }
 .cluster .row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 5px; }
 .cluster .row .rank { color: var(--muted); font-size: 12px; letter-spacing: 0.5px; white-space: nowrap; }
 .cluster .row .rank--main { color: #f5c97a; }
-.cluster .row .rank--side { color: #c0c6d8; }
+.cluster .row .rank--side { color: var(--accent2); }
 .cluster .blurb { color: var(--muted); font-size: 13px; margin-top: 3px; }
 .others { color: var(--muted); font-size: 13px; margin: 10px 0 4px; }
 .evo { border-left: 2px solid #2a2f44; padding-left: 16px; margin-top: 16px; }
