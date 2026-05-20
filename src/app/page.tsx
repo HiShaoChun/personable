@@ -149,7 +149,7 @@ export default function Home() {
     try {
       const html = await file.text();
       if (!looksLikeBookmarkExport(html)) {
-        setErr("这不像 Chrome「导出书签」生成的 HTML 文件。请用浏览器导出书签后再上传。");
+        setErr("这看起来不是浏览器导出的书签 HTML（Netscape 格式）。请在你常用的浏览器里执行『导出书签 → HTML』后再上传。");
         setPhase("idle");
         return; // 不发起任何网络请求
       }
@@ -434,7 +434,7 @@ export default function Home() {
     <main className="wrap">
       <h1>书签人格卡</h1>
       <p className="sub">
-        拖入你的 Chrome 书签导出文件，AI 解读你的互联网人格，生成一张可分享的卡片。
+        拖入你浏览器导出的书签 HTML，AI 解读你的互联网人格，生成一张可分享的卡片。
       </p>
 
       {phase === "idle" && (
@@ -454,9 +454,7 @@ export default function Home() {
           onClick={() => document.getElementById("fi")?.click()}
         >
           <strong>把书签 HTML 文件拖到这里</strong>
-          <div className="hint">
-            或点击选择 · Chrome 书签管理器 → 右上角菜单 → 导出书签
-          </div>
+          <div className="hint">或点击选择</div>
           <input
             id="fi"
             type="file"
@@ -465,6 +463,23 @@ export default function Home() {
             onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
           />
         </div>
+      )}
+
+      {phase === "idle" && (
+        <details className="export-howto">
+          <summary>不知道怎么导出？看各浏览器的方法</summary>
+          <ul>
+            <li>
+              <b>Chromium 系</b>（Chrome / Edge / Brave / Arc 等）：书签管理器 → ⋮ → 导出书签
+            </li>
+            <li>
+              <b>Firefox</b>：书签 → 管理书签 → 导入和备份 → 导出书签为 HTML
+            </li>
+            <li>
+              <b>Safari</b>：文件 → 导出 → 书签
+            </li>
+          </ul>
+        </details>
       )}
 
       {/* 仅在「全新访客」视图（idle 且无持久化恢复态）展示示例画廊。
@@ -544,7 +559,7 @@ export default function Home() {
           <Step
             on={!finished && stage === "synth"}
             done={finished}
-            label="合成人格 → 生成可分享卡片"
+            label="把碎片合成一张人格卡片"
           />
 
           {synthThinking && (

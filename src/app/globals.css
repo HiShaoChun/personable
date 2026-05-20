@@ -27,6 +27,59 @@ a { color: var(--accent2); }
 .drop strong { color: var(--ink); }
 .hint { color: var(--muted); font-size: 13px; margin-top: 10px; }
 
+/* 各浏览器导出书签的路径说明：独立成一行 link，置于 drop 区下方。
+   drop 区保留单一上传焦点；需要帮助的人通过 link 主动展开。
+   spec: bookmark-import「客户端书签文件解析」。 */
+.export-howto {
+  margin: 14px auto 0;
+  max-width: 560px;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+}
+.export-howto summary {
+  display: inline-block;
+  cursor: pointer;
+  color: var(--accent2);
+  list-style: none;
+  user-select: none;
+  padding: 4px 2px;
+}
+.export-howto summary::-webkit-details-marker { display: none; }
+.export-howto summary::after {
+  content: " ▾";
+  font-size: 10px;
+  opacity: .8;
+  margin-left: 2px;
+}
+.export-howto[open] summary::after { content: " ▴"; }
+.export-howto summary:hover { text-decoration: underline; text-underline-offset: 3px; }
+.export-howto summary:focus { outline: none; }
+.export-howto summary:focus-visible {
+  outline: 1px dashed var(--accent2);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+.export-howto ul {
+  margin-top: 12px;
+  padding: 14px 18px;
+  list-style: none;
+  line-height: 1.8;
+  text-align: left;
+  background: rgba(21, 24, 35, .5);
+  border: 1px solid #2a2f44;
+  border-radius: 10px;
+  font-size: 12.5px;
+}
+.export-howto li {
+  padding: 2px 0;
+}
+.export-howto li b {
+  color: var(--ink);
+  font-weight: 500;
+  margin-right: 4px;
+}
+
 .btn {
   display: inline-block; background: linear-gradient(135deg, var(--accent), #5b8cff);
   color: #fff; border: 0; border-radius: 10px; padding: 10px 18px;

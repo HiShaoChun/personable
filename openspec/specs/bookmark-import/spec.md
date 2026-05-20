@@ -2,8 +2,10 @@
 
 ## Purpose
 
-在浏览器端接收并解析 Chrome 书签 HTML 导出文件，得到经校验、去重的结构化条目；
-强制体积/格式上限；原始文件绝不持久化。
+在浏览器端接收并解析 Netscape Bookmark File Format 的书签 HTML 导出文件
+（兼容所有支持该格式导出的主流浏览器，如 Chrome / Firefox / Edge / Safari /
+Brave / Arc / Opera / Vivaldi 等），得到经校验、去重的结构化条目；强制体积/
+格式上限；原始文件绝不持久化。
 
 ## Requirements
 
