@@ -38,6 +38,7 @@ const SHARED_OTHER_INTERESTS = ["豆瓣电影", "播客节目", "咖啡器具"];
 export const SAMPLE_EARNEST: PersonaProfile = {
   vibe: "earnest",
   headline: "在代码与游戏之间，认真过日子的人",
+  signatureQuote: "读完 arXiv 那篇，再开一局《空洞骑士》",
   traits: ["技术好奇", "审美在线", "节制消费", "独处自在"],
   clusters: SHARED_CLUSTERS,
   otherInterests: SHARED_OTHER_INTERESTS,
@@ -54,6 +55,7 @@ export const SAMPLE_EARNEST: PersonaProfile = {
 export const SAMPLE_ROAST: PersonaProfile = {
   vibe: "roast",
   headline: "白天 push 代码，晚上 push 蒸汽存档的工位人类",
+  signatureQuote: "Steam 库存比 GitHub star 还难清理",
   traits: ["代码上瘾", "库存焦虑", "周边剁手", "宅家硬撑"],
   clusters: SHARED_CLUSTERS,
   otherInterests: SHARED_OTHER_INTERESTS,
@@ -73,6 +75,7 @@ export const SAMPLE_ROAST: PersonaProfile = {
 export const SAMPLE_POETIC: PersonaProfile = {
   vibe: "poetic",
   headline: "把代码、星空与午后光斑一并收藏的人",
+  signatureQuote: "把 arXiv 折成纸船，放进 itch.io 的小溪",
   traits: ["静水深流", "夜读者", "拾光人", "纸与电"],
   clusters: SHARED_CLUSTERS,
   otherInterests: SHARED_OTHER_INTERESTS,

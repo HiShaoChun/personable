@@ -151,12 +151,36 @@ a { color: var(--accent2); }
   border: 1px solid #2a2f44; border-radius: 20px; padding: 30px;
 }
 .card h2 { font-size: 24px; line-height: 1.3; }
+.card .quote {
+  margin: 6px 0 4px; color: #c8cee0; font-size: 14.5px; line-height: 1.5;
+  font-style: italic; letter-spacing: 0.2px;
+}
 .tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0; }
 .tag { background: #262b40; color: var(--ink); padding: 5px 12px; border-radius: 999px; font-size: 13px; }
 .cluster { margin: 12px 0; }
 .cluster .bar { height: 8px; border-radius: 6px; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+/* 三档差异化进度条：主线金光、副线银灰、番外细虚线。
+   openspec change persona-card-signature-and-visual-tiers Decision 5。 */
+.cluster .bar--main {
+  height: 10px;
+  background: linear-gradient(90deg, #f5c97a, #f8e8a0, #f5c97a);
+  box-shadow: 0 0 12px rgba(245, 201, 122, 0.35);
+}
+.cluster .bar--side {
+  height: 8px;
+  background: linear-gradient(90deg, #a8b1c8, #d6dae8);
+  box-shadow: none;
+}
+.cluster .bar--extra {
+  height: 4px;
+  background: #4a5070;
+  box-shadow: none;
+  opacity: 0.85;
+}
 .cluster .row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 5px; }
 .cluster .row .rank { color: var(--muted); font-size: 12px; letter-spacing: 0.5px; white-space: nowrap; }
+.cluster .row .rank--main { color: #f5c97a; }
+.cluster .row .rank--side { color: #c0c6d8; }
 .cluster .blurb { color: var(--muted); font-size: 13px; margin-top: 3px; }
 .others { color: var(--muted); font-size: 13px; margin: 10px 0 4px; }
 .evo { border-left: 2px solid #2a2f44; padding-left: 16px; margin-top: 16px; }

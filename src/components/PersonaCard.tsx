@@ -3,14 +3,24 @@
 import { useEffect, type CSSProperties } from "react";
 import type { InterestCluster, PersonaProfile } from "@/lib/agent/schema";
 
-// rank 1 → 主线；size ≥ top.size × 0.5 → 副线；否则 → 番外。
+// rank 1 → main；size ≥ top.size × 0.5 → side；否则 → extra。
 // 详见 openspec change 2026-05-18-clusters-vignette-pass（D5）。
-function sizeLabel(c: InterestCluster, all: InterestCluster[]): string {
+// 英文 key 供 className 用，TIER_LABEL 映射回中文。openspec change
+// persona-card-signature-and-visual-tiers Decision 3。
+type StorylineTier = "main" | "side" | "extra";
+
+function storylineTier(c: InterestCluster, all: InterestCluster[]): StorylineTier {
   const top = all[0];
-  if (!top || top.size <= 0) return "番外";
-  if (c === top) return "主线";
-  return c.size / top.size >= 0.5 ? "副线" : "番外";
+  if (!top || top.size <= 0) return "extra";
+  if (c === top) return "main";
+  return c.size / top.size >= 0.5 ? "side" : "extra";
 }
+
+const TIER_LABEL: Record<StorylineTier, string> = {
+  main: "主线",
+  side: "副线",
+  extra: "番外",
+};
 
 type Reveal = "first" | "quick" | "none";
 
@@ -60,6 +70,12 @@ export default function PersonaCard({
           {profile.headline}
         </h2>
 
+        {profile.signatureQuote && (
+          <p className="quote card-elem" style={elemStyle(idx++)}>
+            「{profile.signatureQuote}」
+          </p>
+        )}
+
         <div className="tags card-elem" style={elemStyle(idx++)}>
           {profile.traits.map((t, i) => (
             <span className="tag" key={i}>
@@ -68,18 +84,21 @@ export default function PersonaCard({
           ))}
         </div>
 
-        {profile.clusters.map((c, i) => (
-          <div className="cluster card-elem" key={i} style={elemStyle(idx++)}>
-            <div className="row">
-              <span>{c.name}</span>
-              <span className="rank">{sizeLabel(c, profile.clusters)}</span>
+        {profile.clusters.map((c, i) => {
+          const tier = storylineTier(c, profile.clusters);
+          return (
+            <div className="cluster card-elem" key={i} style={elemStyle(idx++)}>
+              <div className="row">
+                <span>{c.name}</span>
+                <span className={`rank rank--${tier}`}>{TIER_LABEL[tier]}</span>
+              </div>
+              <div
+                className={`bar bar--${tier}`}
+                style={{ width: `${Math.round((c.size / max) * 100)}%` }}
+              />
             </div>
-            <div
-              className="bar"
-              style={{ width: `${Math.round((c.size / max) * 100)}%` }}
-            />
-          </div>
-        ))}
+          );
+        })}
 
         {profile.otherInterests && profile.otherInterests.length > 0 && (
           <div className="others card-elem" style={elemStyle(idx++)}>

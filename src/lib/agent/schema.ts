@@ -11,6 +11,7 @@ export interface InterestCluster {
 export interface PersonaProfile {
   vibe: Vibe;
   headline: string; // 卡片大标题
+  signatureQuote?: string; // 可选签名台词（≤28 字），随 vibe 风格生成；缺失即不渲染
   traits: string[]; // 3-5 条人格特质
   clusters: InterestCluster[]; // 命名兴趣簇（按 size 降序，硬阈值 + top 5 过滤后）
   // 被硬阈值或软上限剔除的簇 name，按原 size 降序。无被剔除项时省略字段。
@@ -30,6 +31,10 @@ export function validateProfile(p: unknown): ValidationResult {
 
   if (typeof o.headline !== "string" || !o.headline.trim())
     errors.push("headline 缺失");
+
+  // signatureQuote 可选：仅在「存在但类型不对」时报错。空串合法（normalize 阶段丢弃）。
+  if ("signatureQuote" in o && o.signatureQuote != null && typeof o.signatureQuote !== "string")
+    errors.push("signatureQuote 需为字符串");
 
   const traits = o.traits;
   if (!Array.isArray(traits) || traits.length < 3 || traits.length > 5) {
@@ -70,6 +75,17 @@ function cleanTrait(s: unknown): string {
   t = t.replace(/[。、，,．.\s]+$/g, "");
   const chars = [...t];
   if (chars.length > 8) t = chars.slice(0, 8).join("");
+  return t;
+}
+
+// 签名台词清洗：trim、剥首尾引号、按 codepoint 截至 28。空 / 非串输入返回 ""。
+function cleanSignatureQuote(s: unknown): string {
+  if (s == null) return "";
+  let t = String(s).trim();
+  if (!t) return "";
+  t = t.replace(/^["'“”‘’「『]+/, "").replace(/["'“”‘’」』]+$/, "").trim();
+  const chars = [...t];
+  if (chars.length > 28) t = chars.slice(0, 28).join("");
   return t;
 }
 
@@ -118,6 +134,8 @@ export function normalizeProfile(
       return { period: String(ee.period ?? ""), summary: String(ee.summary ?? "") };
     }),
   };
+  const quote = cleanSignatureQuote(raw.signatureQuote);
+  if (quote) profile.signatureQuote = quote;
   if (otherNames.length > 0) profile.otherInterests = otherNames;
   return profile;
 }
