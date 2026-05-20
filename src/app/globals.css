@@ -292,3 +292,112 @@ a { color: var(--accent2); }
 }
 
 .sample-expanded { margin-top: 28px; }
+
+/* 人格卡入场动效。spec: persona-card「人格卡入场动效」。
+   - reveal-first：翻转 + 弹跳 + 元素错峰（首次合成）
+   - reveal-quick：短淡入 + 短 stagger（重新生成）
+   - 不传 reveal：直接终态（分享页 / SampleGallery）
+   原 .card 仍负责背景/边框/圆角；reveal 模式下额外加 perspective 与
+   `transform-style: preserve-3d`，以及 face/back 两层互补。 */
+.card.reveal-first,
+.card.reveal-quick {
+  perspective: 1200px;
+  transform-style: preserve-3d;
+  position: relative;
+}
+.card.reveal-first {
+  animation: card-flip-in 600ms cubic-bezier(.2,.8,.2,1) both,
+             card-bounce-in 200ms cubic-bezier(.2,.8,.2,1) 600ms both;
+}
+.card.reveal-quick {
+  animation: card-fade-in-quick 200ms ease-out both;
+}
+@keyframes card-flip-in {
+  from { transform: rotateY(-90deg); }
+  to   { transform: rotateY(0); }
+}
+@keyframes card-bounce-in {
+  0%   { transform: scale(0.98); }
+  60%  { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+@keyframes card-fade-in-quick {
+  from { opacity: 0; transform: scale(0.98); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* 卡背占位：仅 reveal-first 渲染。rotateY(180deg) + backface-hidden 与
+   卡面互补——父级 .card 处于 rotateY(-90) → 0 区间时，卡背覆盖整个卡片
+   区域，避免「卡面 backface-hidden 期间空白 600ms」。 */
+.card-back {
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  background: linear-gradient(160deg, #1a1c2b, #121420);
+  border: 1px solid #2a2f44;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: rotateY(180deg);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  pointer-events: none;
+}
+.card-back-mark {
+  color: var(--muted);
+  font-size: 18px;
+  letter-spacing: 8px;
+  opacity: .5;
+}
+.card.reveal-first .card-face,
+.card.reveal-quick .card-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* 卡内元素 stagger：用 --delay（无单位整数索引）配合 calc + min 兜底，
+   避免 cluster 多时 stagger 总长失控。
+   - first：800ms（翻转 + 弹跳）后开始，每元素步进 80ms，上限 480ms
+   - quick：200ms（淡入）后开始，每元素步进 20ms，上限 100ms */
+.card.reveal-first .card-elem,
+.card.reveal-quick .card-elem {
+  opacity: 0;
+  transform: translateY(6px);
+  animation: elem-rise 250ms ease-out both;
+}
+.card.reveal-first .card-elem {
+  animation-delay: calc(800ms + min(var(--delay, 0) * 80ms, 480ms));
+}
+.card.reveal-quick .card-elem {
+  animation-delay: calc(200ms + min(var(--delay, 0) * 20ms, 100ms));
+}
+@keyframes elem-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Toolbar 与卡片节奏同步：动效期间 pointer-events 禁用，淡入完成后由
+   父组件在 onRevealEnd 中移除 reveal-* class 恢复可点击（CSS 默认）。 */
+.toolbar.reveal-first,
+.toolbar.reveal-quick {
+  opacity: 0;
+  pointer-events: none;
+  animation: elem-rise 250ms ease-out both;
+}
+.toolbar.reveal-first { animation-delay: 1250ms; }
+.toolbar.reveal-quick { animation-delay: 300ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .card.reveal-first,
+  .card.reveal-quick,
+  .card.reveal-first .card-elem,
+  .card.reveal-quick .card-elem,
+  .toolbar.reveal-first,
+  .toolbar.reveal-quick {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    pointer-events: auto !important;
+  }
+  .card-back { display: none; }
+}

@@ -88,11 +88,37 @@ function driver(): Driver {
 
 const ttlMs = () => config.cardTtlDays * 24 * 60 * 60 * 1000;
 
-export function putCard(id: string, profileJson: string) {
-  driver().set(`card:${id}`, profileJson, ttlMs());
+// 卡片封套：包一层带 createdAt，让分享落地页能显示「N 天前生成」时间标。
+// store 的 Driver 本身仍是 opaque kv，封套仅在这两个 helper 内编解码。
+// 读端向后兼容：上线前已写入的裸 profile JSON 没有 `profile` 字段，
+// 退回当成裸 JSON 处理、createdAt 置 null（UI 端据此不渲染时间标）。
+interface CardEnvelope {
+  profile: string;
+  createdAt: number;
 }
-export function getCard(id: string): string | null {
-  return driver().get(`card:${id}`);
+
+export function putCard(id: string, profileJson: string) {
+  const env: CardEnvelope = { profile: profileJson, createdAt: Date.now() };
+  driver().set(`card:${id}`, JSON.stringify(env), ttlMs());
+}
+export function getCard(
+  id: string
+): { profile: string; createdAt: number | null } | null {
+  const raw = driver().get(`card:${id}`);
+  if (raw === null) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<CardEnvelope>;
+    if (typeof parsed.profile === "string") {
+      return {
+        profile: parsed.profile,
+        createdAt: typeof parsed.createdAt === "number" ? parsed.createdAt : null,
+      };
+    }
+  } catch {
+    // 解析失败说明是上线前写入的裸 JSON 字符串（更老格式甚至不是合法 JSON
+    // 时同样安全降级）—— 走兼容分支
+  }
+  return { profile: raw, createdAt: null };
 }
 
 // 缓存 agent 状态供「换风格重合成」复用（同 TTL）。

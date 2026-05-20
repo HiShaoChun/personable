@@ -82,6 +82,10 @@ export default function Home() {
   >({});
   // 渐进式预览：概览/簇先到，掩盖深挖+合成时延
   const [stage, setStage] = useState<Stage | null>(null);
+  // 入场动效控制：未播首次入场前 → "first"；播完或从 localStorage 恢复 → "none"；
+  // 用户「换个风格」重生成后 → "quick"。由 ids.id 变化触发 PersonaCard 重挂载
+  // 来重新播放（见下方 key={ids?.id}）。
+  const [reveal, setReveal] = useState<"first" | "quick" | "none">("first");
   const [ovStat, setOvStat] = useState<{ total: number; span: string } | null>(
     null
   );
@@ -123,6 +127,9 @@ export default function Home() {
       setClusterPrev(parsed.clusterPrev ?? []);
       setFetches(parsed.fetches ?? []);
       setPhase("done");
+      // 从 localStorage 恢复：用户其实已经看过这张卡，直接展示终态，
+      // 不重播首次入场动效。
+      setReveal("none");
     } catch {
       window.localStorage.removeItem(STORAGE_KEY);
     }
@@ -142,6 +149,7 @@ export default function Home() {
     setSynthThinking("");
     setFetches([]);
     setVibeCache({});
+    setReveal("first");
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(STORAGE_KEY);
     }
@@ -352,6 +360,7 @@ export default function Home() {
     if (hit) {
       setProfile(hit.profile);
       setIds({ ...ids, id: hit.id });
+      setReveal("quick");
       setErr("");
       persistRun({
         id: hit.id,
@@ -382,6 +391,7 @@ export default function Home() {
       }
       setProfile(data.profile);
       setIds({ ...ids, id: data.id }); // 每个风格变体独立分享链接
+      setReveal("quick");
       // 回填缓存：下次再切回同 vibe 即瞬时（D4 注 2）；persist 放在 updater 内
       // 以拿到合并最新 vibeCache（与预生成 effect 同样的考量）
       setVibeCache((c) => {
@@ -416,15 +426,19 @@ export default function Home() {
 
   async function copyShare() {
     if (!ids) return;
-    const link = `${location.origin}/c/${ids.id}`;
+    const link = `${location.origin}/persona/${ids.id}`;
+    // 复制为带前缀的可读文本：「【书签人格卡】<headline> <url>」，让对方在
+    // 聊天里粘贴出来一眼就知道这是什么。spec: persona-card「复制可读分享文本」。
+    const headline = profile?.headline?.trim() || "你的互联网人格";
+    const shareText = `【书签人格卡】${headline} ${link}`;
     try {
-      await navigator.clipboard.writeText(link);
+      await navigator.clipboard.writeText(shareText);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // 非 HTTPS / 文档失焦 / 权限被拒 —— 写剪贴板会失败。
-      // 此时把链接塞进 note，让用户能手动复制。
-      setNote("复制失败，请手动复制：" + link);
+      // 此时把完整可分享文本塞进 note，让用户能手动复制。
+      setNote("复制失败，请手动复制：" + shareText);
     }
   }
 
@@ -591,8 +605,14 @@ export default function Home() {
 
       {phase === "done" && profile && (
         <>
-          <PersonaCard profile={profile} innerRef={cardRef} />
-          <div className="toolbar">
+          <PersonaCard
+            key={ids?.id ?? "initial"}
+            profile={profile}
+            innerRef={cardRef}
+            reveal={reveal}
+            onRevealEnd={() => setReveal("none")}
+          />
+          <div className={"toolbar" + (reveal === "none" ? "" : ` reveal-${reveal}`)}>
             <button className="btn" onClick={exportImage}>
               保存为图片
             </button>
