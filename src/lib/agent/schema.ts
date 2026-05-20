@@ -16,11 +16,7 @@ export interface PersonaProfile {
   // 被硬阈值或软上限剔除的簇 name，按原 size 降序。无被剔除项时省略字段。
   otherInterests?: string[];
   evolution: { period: string; summary: string }[]; // 按时间排序的兴趣演变
-  disclaimer: string; // 固定免责声明
 }
-
-export const DISCLAIMER =
-  "本卡片由 AI 依据你导出的书签生成，仅供娱乐，不代表对你的真实判断。";
 
 export interface ValidationResult {
   ok: boolean;
@@ -77,7 +73,7 @@ function cleanTrait(s: unknown): string {
   return t;
 }
 
-/** 把模型输出归一为完整 PersonaProfile（补 disclaimer、排序、裁剪 traits、密度治理）。 */
+/** 把模型输出归一为完整 PersonaProfile（排序、裁剪 traits、密度治理）。 */
 export function normalizeProfile(
   raw: Record<string, unknown>,
   vibe: Vibe
@@ -121,7 +117,6 @@ export function normalizeProfile(
       const ee = e as Record<string, unknown>;
       return { period: String(ee.period ?? ""), summary: String(ee.summary ?? "") };
     }),
-    disclaimer: DISCLAIMER,
   };
   if (otherNames.length > 0) profile.otherInterests = otherNames;
   return profile;

@@ -49,7 +49,6 @@ export const SAMPLE_EARNEST: PersonaProfile = {
     },
     { period: "2025 ~ 至今", summary: "把目光投向居家美学，开始打理生活的细节" },
   ],
-  disclaimer: "",
 };
 
 export const SAMPLE_ROAST: PersonaProfile = {
@@ -69,7 +68,6 @@ export const SAMPLE_ROAST: PersonaProfile = {
       summary: "终于发现没有 MUJI 香薰救不了的加班夜",
     },
   ],
-  disclaimer: "",
 };
 
 export const SAMPLE_POETIC: PersonaProfile = {
@@ -92,7 +90,6 @@ export const SAMPLE_POETIC: PersonaProfile = {
       summary: "在原木与亚麻之间，安放被加班磨钝的目光",
     },
   ],
-  disclaimer: "",
 };
 
 // 顺序固定 earnest → roast → poetic，与 VIBES 一致，便于横向对比。

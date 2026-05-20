@@ -38,12 +38,8 @@ export const config = {
   maxBookmarkEntries: num("MAX_BOOKMARK_ENTRIES", 800),
   maxRequestBytes: num("MAX_REQUEST_BYTES", 2_000_000),
 
-  // agent 循环边界
-  maxPageFetches: num("MAX_PAGE_FETCHES", 8),
-  maxAgentIterations: num("MAX_AGENT_ITERATIONS", 24),
+  // agent 运行墙钟兜底
   maxWallClockMs: num("MAX_WALL_CLOCK_MS", 90_000),
-  fetchTimeoutMs: num("FETCH_TIMEOUT_MS", 8_000),
-  fetchMaxBytes: num("FETCH_MAX_BYTES", 1_500_000),
 
   // 模型（DashScope 通义千问）。单提供方，分流/合成默认同一模型，可分别覆盖。
   modelTriage: str("MODEL_TRIAGE", "qwen-turbo"),

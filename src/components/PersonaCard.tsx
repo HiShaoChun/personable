@@ -96,12 +96,6 @@ export default function PersonaCard({
             ))}
           </div>
         )}
-
-        {profile.disclaimer && (
-          <div className="disc card-elem" style={elemStyle(idx++)}>
-            {profile.disclaimer}
-          </div>
-        )}
       </div>
     </div>
   );

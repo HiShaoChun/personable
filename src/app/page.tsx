@@ -13,10 +13,9 @@ import SampleGallery from "@/components/SampleGallery";
 import type { PersonaProfile } from "@/lib/agent/schema";
 
 const STORAGE_KEY = "personable:last";
-// v2：扩展持久化形态，纳入终态展示的过程档案字段（cluster/deepdive/synth
-// 三段思考流 + 簇 chips + fetch chips），让刷新后画面与刷新前一致。v1
-// 记录缺这些字段，挂载时按版本不匹配被静默丢弃。
-const STORAGE_VERSION = 2 as const;
+// v3：纳入终态展示的过程档案字段（cluster / synth 两段思考流 + 簇 chips），
+// 让刷新后画面与刷新前一致。早版本字段不同，挂载时按版本不匹配被静默丢弃。
+const STORAGE_VERSION = 3 as const;
 
 type PersistedRun = {
   version: typeof STORAGE_VERSION;
@@ -26,33 +25,18 @@ type PersistedRun = {
   vibeCache: Partial<Record<Vibe, { id: string; profile: PersonaProfile }>>;
   ovStat: { total: number; span: string } | null;
   clusterThinking: string;
-  thinking: string;
   synthThinking: string;
   clusterPrev: ClusterPreview[];
-  fetches: FetchItem[];
 };
 
 type Phase = "idle" | "parsing" | "thinking" | "done";
 
 // 渐进式流事件（与 /api/persona NDJSON 对应）
-type Stage = "cluster" | "deepdive" | "synth";
+type Stage = "cluster" | "synth";
 interface ClusterPreview {
   name: string;
   size: number;
   domains: string[];
-}
-interface FetchItem {
-  url: string;
-  host: string;
-  status: "start" | "ok" | "fail";
-}
-
-function hostOf(url: string): string {
-  try {
-    return new URL(url).host.replace(/^www\./, "");
-  } catch {
-    return url.slice(0, 40);
-  }
 }
 
 function persistRun(state: Omit<PersistedRun, "version">) {
@@ -90,11 +74,9 @@ export default function Home() {
     null
   );
   const [clusterPrev, setClusterPrev] = useState<ClusterPreview[]>([]);
-  // 聚类 / 深挖 / 合成三步分别流式吐思考文本，让用户看到 agent 在干活
+  // 聚类 / 合成两步分别流式吐思考文本，让用户看到 agent 在干活
   const [clusterThinking, setClusterThinking] = useState("");
-  const [thinking, setThinking] = useState("");
   const [synthThinking, setSynthThinking] = useState("");
-  const [fetches, setFetches] = useState<FetchItem[]>([]);
   const cardRef = useRef<HTMLDivElement>(null);
 
   // 挂载时尝试从 localStorage 恢复上一次的终态：损坏/过版本/字段缺失一律
@@ -120,12 +102,10 @@ export default function Home() {
       setIds({ id: parsed.id, runId: parsed.runId });
       setVibeCache(parsed.vibeCache ?? {});
       setOvStat(parsed.ovStat ?? null);
-      // 过程档案：与卡片并列展示的思考流 / 簇 chips / fetch chips
+      // 过程档案：与卡片并列展示的思考流 / 簇 chips
       setClusterThinking(parsed.clusterThinking ?? "");
-      setThinking(parsed.thinking ?? "");
       setSynthThinking(parsed.synthThinking ?? "");
       setClusterPrev(parsed.clusterPrev ?? []);
-      setFetches(parsed.fetches ?? []);
       setPhase("done");
       // 从 localStorage 恢复：用户其实已经看过这张卡，直接展示终态，
       // 不重播首次入场动效。
@@ -145,9 +125,7 @@ export default function Home() {
     setOvStat(null);
     setClusterPrev([]);
     setClusterThinking("");
-    setThinking("");
     setSynthThinking("");
-    setFetches([]);
     setVibeCache({});
     setReveal("first");
     if (typeof window !== "undefined") {
@@ -190,7 +168,7 @@ export default function Home() {
         return;
       }
 
-      // 渐进式读取 NDJSON：概览 → 簇 → 深挖 → 最终卡片
+      // 渐进式读取 NDJSON：概览 → 簇 → 最终卡片
       const reader = res.body.getReader();
       const dec = new TextDecoder();
       let buf = "";
@@ -199,10 +177,8 @@ export default function Home() {
       // 持久化 done 快照时需要这里的真实累计值（D6.1）。
       let runOvStat: { total: number; span: string } | null = null;
       let runClusterThinking = "";
-      let runThinking = "";
       let runSynthThinking = "";
       let runClusterPrev: ClusterPreview[] = [];
-      let runFetches: FetchItem[] = [];
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -229,30 +205,6 @@ export default function Home() {
             const clusters = ev.clusters as ClusterPreview[];
             runClusterPrev = clusters;
             setClusterPrev(clusters);
-            setStage("deepdive");
-          } else if (ev.phase === "deepdive_thinking") {
-            const delta = ev.delta as string;
-            runThinking += delta;
-            setThinking((s) => s + delta);
-          } else if (ev.phase === "deepdive_fetch") {
-            const url = ev.url as string;
-            const status = ev.status as FetchItem["status"];
-            // 与 setFetches updater 等价的纯函数计算，写入 runFetches 镜像
-            const i = runFetches.findIndex((x) => x.url === url);
-            if (i < 0) {
-              runFetches = [...runFetches, { url, host: hostOf(url), status }];
-            } else {
-              runFetches = runFetches.slice();
-              runFetches[i] = { ...runFetches[i], status };
-            }
-            setFetches((arr) => {
-              const j = arr.findIndex((x) => x.url === url);
-              if (j < 0) return [...arr, { url, host: hostOf(url), status }];
-              const next = arr.slice();
-              next[j] = { ...next[j], status };
-              return next;
-            });
-          } else if (ev.phase === "deepdive") {
             setStage("synth");
           } else if (ev.phase === "synth_thinking") {
             const delta = ev.delta as string;
@@ -274,10 +226,8 @@ export default function Home() {
               vibeCache: seededCache,
               ovStat: runOvStat,
               clusterThinking: runClusterThinking,
-              thinking: runThinking,
               synthThinking: runSynthThinking,
               clusterPrev: runClusterPrev,
-              fetches: runFetches,
             });
             finished = true;
           } else if (ev.phase === "error") {
@@ -333,10 +283,8 @@ export default function Home() {
               vibeCache: next,
               ovStat,
               clusterThinking,
-              thinking,
               synthThinking,
               clusterPrev,
-              fetches,
             });
             return next;
           });
@@ -369,10 +317,8 @@ export default function Home() {
         vibeCache,
         ovStat,
         clusterThinking,
-        thinking,
         synthThinking,
         clusterPrev,
-        fetches,
       });
       return;
     }
@@ -403,10 +349,8 @@ export default function Home() {
           vibeCache: next,
           ovStat,
           clusterThinking,
-          thinking,
           synthThinking,
           clusterPrev,
-          fetches,
         });
         return next;
       });
@@ -530,43 +474,6 @@ export default function Home() {
                   <span className="caret">▍</span>
                 )}
               </div>
-            </div>
-          )}
-
-          <Step
-            on={!finished && stage === "deepdive"}
-            done={finished || stage === "synth"}
-            label={
-              finished || stage === "synth"
-                ? "深挖完成"
-                : "agent 自主决定深挖哪些兴趣"
-            }
-          />
-
-          {(thinking || fetches.length > 0) && (
-            <div className="deep-panel">
-              {thinking && (
-                <div className="thinking">
-                  {thinking}
-                  {!finished && stage === "deepdive" && (
-                    <span className="caret">▍</span>
-                  )}
-                </div>
-              )}
-              {fetches.length > 0 && (
-                <div className="fetch-row">
-                  {fetches.map((f) => (
-                    <span
-                      key={f.url}
-                      className={"fchip " + f.status}
-                      title={f.url}
-                    >
-                      <span className="fdot" />
-                      {f.host}
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
           )}
 

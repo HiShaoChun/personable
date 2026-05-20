@@ -1,5 +1,5 @@
 // finalize_profile 合成（Sonnet）+ 按风格重合成。
-// spec: persona-agent「结构化画像输出」「按风格重合成且不重跑深挖」。
+// spec: persona-agent「结构化画像输出」「按风格重合成」。
 import { config, type Vibe } from "@/config";
 import { client, makeThinkingSplitter, parseJson, TokenBudget } from "./llm";
 import type { ClusterResult } from "./cluster";
@@ -10,11 +10,10 @@ import {
   type PersonaProfile,
 } from "./schema";
 
-// 已算好的 agent 状态——重合成时复用，不重跑深挖。
+// 已算好的 agent 状态——重合成时复用。
 export interface AgentState {
   overview: Overview;
   clusters: ClusterResult;
-  fetchedNotes: string[]; // 深挖阶段抓到的代表性网页摘要
 }
 
 const VIBE_PROMPT: Record<Vibe, string> = {
@@ -38,7 +37,6 @@ function buildPrompt(state: AgentState, vibe: Vibe): string {
 兴趣簇：
 ${clusterLines}
 初版草图：${state.clusters.personaSketch}
-深挖网页要点：${state.fetchedNotes.join(" | ") || "（无）"}
 
 注意：cluster.name 必须从上述聚类阶段的分类描述重写为带动词暗示 / 反差感的人物剪影式短句，贴合当前语气；size 保持输入数值不变，不许新增或删除 cluster。
 好例：「讯飞教育产线研发文档」→「教育产线的隐形调度员」

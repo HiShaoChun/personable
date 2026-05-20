@@ -105,7 +105,6 @@ console.log("\n[persona-agent] 画像 schema 校验");
     "earnest"
   );
   check("合格画像通过校验", validateProfile(good).ok);
-  check("固定免责声明被补上", good.disclaimer.length > 0);
 
   const badTraits = validateProfile({
     headline: "x",
@@ -124,24 +123,5 @@ console.log("\n[persona-agent] 画像 schema 校验");
   check("无簇被拒", !noClusters.ok);
 }
 
-console.log("\n[persona-agent] fetch_page SSRF 拒绝");
-{
-  // 动态 import：fetchPage 依赖 node:dns，仅在 node 下
-  const { fetchPage } = require("../src/lib/agent/fetchPage");
-  (async () => {
-    const cases = [
-      ["http://127.0.0.1/", "环回"],
-      ["http://169.254.169.254/", "云元数据/链路本地"],
-      ["http://192.168.1.1/", "内网"],
-      ["http://10.0.0.5/", "内网"],
-      ["ftp://example.com/", "非 http(s)"],
-      ["file:///etc/passwd", "file 协议"],
-    ];
-    for (const [url, label] of cases) {
-      const r = await fetchPage(url);
-      check(`拒绝 ${label}: ${url}`, r.ok === false);
-    }
-    console.log(`\n结果：${pass} 通过 / ${fail} 失败\n`);
-    process.exit(fail === 0 ? 0 : 1);
-  })();
-}
+console.log(`\n结果：${pass} 通过 / ${fail} 失败\n`);
+process.exit(fail === 0 ? 0 : 1);

@@ -2,16 +2,15 @@
 
 > 把你的 Chrome 书签变成一张「人格卡」。
 
-上传浏览器导出的书签 HTML，服务端多步 agent 会做概览扫描、LLM 聚类、有界的代表性网页深挖，最后合成一张含人格特质、命名兴趣簇与兴趣演变时间线的可分享卡片。
+上传浏览器导出的书签 HTML，服务端 agent 会做概览扫描、LLM 聚类，最后合成一张含人格特质、命名兴趣簇与兴趣演变时间线的可分享卡片。
 
 ## 特性
 
 - **本地解析**：Chrome/Netscape 格式书签 HTML 完全在浏览器内解析，原始文件绝不上传或落盘。
-- **多步 agent 流水线**：本地概览 → 一次 LLM 聚类 → 自主选择性深挖（最多 8 个代表性页面）→ 画像合成。
-- **三种风格**：真诚 / 毒舌 / 诗意。换风格只重跑合成，不重抓网页。
+- **三段式 agent 流水线**：本地概览 → 一次 LLM 聚类 → 画像合成。
+- **三种风格**：真诚 / 毒舌 / 诗意。换风格只重跑合成。
 - **图片导出 + 分享链接**：客户端 `html-to-image` 导出 PNG；分享链接只存派生画像 JSON，不存原始书签，默认 TTL 7 天。
-- **硬性边界**：每日运行预算、单次 token 上限、抓取数/迭代数/墙钟超时、滑动窗口限流、并发上限——全在 [.env.example](.env.example) 一处配置。
-- **网页抓取安全**：仅 http/https 公网资源，屏蔽内网、环回、链路本地目标。
+- **硬性边界**：每日运行预算、单次 token 上限、墙钟超时、滑动窗口限流、并发上限——全在 [.env.example](.env.example) 一处配置。
 
 ## 技术栈
 
@@ -43,7 +42,7 @@ npm run test:fixtures      # scripts/verify.ts 跑解析/抽样 fixture 校验
 - `LLM_API_KEY` / `LLM_BASE_URL`：服务端凭据与端点（OpenAI 兼容）。
 - `MODEL_TRIAGE` / `MODEL_SYNTHESIS`：聚类与合成可用不同模型。
 - `DAILY_RUN_BUDGET` / `PER_RUN_MAX_TOKENS`：成本熔断。
-- `MAX_BOOKMARK_ENTRIES` / `MAX_PAGE_FETCHES` / `MAX_AGENT_ITERATIONS` / `MAX_WALL_CLOCK_MS`：agent 循环边界。
+- `MAX_BOOKMARK_ENTRIES` / `MAX_WALL_CLOCK_MS`：输入上限与运行墙钟兜底。
 - `RATE_LIMIT_*` / `MAX_CONCURRENT_RUNS`：限流与并发。
 - `STORE_DRIVER`：`memory`（开发）或 `sqlite`（自托管生产）。
 - `CARD_TTL_DAYS`：分享卡留存天数。
@@ -63,7 +62,7 @@ src/
   components/PersonaCard.tsx
   lib/
     bookmarks/            HTML 解析、归一化、分层下采样
-    agent/                overview / cluster / fetchPage / loop / synthesize / schema
+    agent/                overview / cluster / loop / synthesize / schema
     safeguards.ts         预算、限流、并发护栏
     store.ts              分享卡存储（memory | sqlite）
     vibes.ts              风格定义（client-safe）

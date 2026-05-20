@@ -1,5 +1,5 @@
-// 真实端到端冒烟：用极小书签集跑完整 agent（聚类→深挖→合成）。
-// 验证 DashScope 协议 / 模型 id / function-calling 是否可用。
+// 真实端到端冒烟：用极小书签集跑完整 agent（聚类→合成）。
+// 验证 DashScope 协议 / 模型 id 是否可用。
 import { normalizeAndDedupe, parseRawEntries } from "../src/lib/bookmarks/parse";
 import { runAgent } from "../src/lib/agent/loop";
 
@@ -30,10 +30,8 @@ const SAMPLE = `<!DOCTYPE NETSCAPE-Bookmark-file-1><DL><p>
         console.log(`  [${at()}] 概览到达：${p.overview.total} 条`);
       else if (p.phase === "clusters")
         console.log(
-          `  [${at()}] 簇到达：${p.clusters.map((c) => c.name).join(", ")}`
+          `  [${at()}] 簇到达：${p.clusters.map((c) => c.name).join(", ")}，开始合成…`
         );
-      else if (p.phase === "deepdive")
-        console.log(`  [${at()}] 深挖结束（抓取 ${p.fetches} 次），开始合成…`);
     });
     console.log(`\n✓ 成功（最终 ${at()}）\n`);
     console.log("标题:", profile.headline);
