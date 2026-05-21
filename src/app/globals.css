@@ -150,6 +150,344 @@ a { color: var(--accent2); }
 }
 .chip.chip-other i { color: #6b7180; }
 
+/* 数据切片：本地零延迟可视化区。位于 .steps 内"已读取"与"已聚出"两个 Step
+   之间，在 cluster thinking 流式吐字的同时入场，把等待时延填满"只属于这个人"
+   的内容。spec: homepage-data-slices。
+   - 容器左边距 19px 与其他 Step 子节点（.deep-panel / .cluster-prev）对齐
+   - grid auto-fit minmax(280px,1fr) 自适应：宽屏 2 列、窄屏单列
+   - reveal-first 时容器与子图通过 inline animation-delay 错峰入场 */
+.data-slices {
+  margin: 14px 0 4px 19px;
+  padding: 14px;
+  background: rgba(21, 24, 35, .45);
+  border: 1px solid #2a2f44;
+  border-radius: 12px;
+}
+.data-slices-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding-left: 10px;
+  border-left: 3px solid var(--accent2);
+  margin-bottom: 14px;
+}
+.data-slices-title strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: 0.02em;
+}
+.data-slices-title span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.data-slices-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+.data-slice {
+  background: #181c2c;
+  border: 1px solid #2a2f44;
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
+}
+
+/* SliceFrame：统一的标题 + 副说明 + body 三段结构。spec: homepage-data-slices
+   「表达硬规则」要求每张图必须有 H4 标题 + 一行白话副说明。 */
+.slice-head {
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.slice-head h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+}
+.slice-head p {
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.slice-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* reveal-first：容器 200ms 淡入；子节点通过 inline animation-delay 错峰
+   (200/500/800/1100ms)。reveal-quick 用更短 stagger。reveal=none 跳过。 */
+.data-slices.reveal-first,
+.data-slices.reveal-quick {
+  opacity: 0;
+  animation: data-slice-in 280ms ease-out both;
+}
+.data-slices.reveal-quick { animation-duration: 180ms; }
+.data-slices.reveal-first .data-slice,
+.data-slices.reveal-quick .data-slice {
+  opacity: 0;
+  animation: data-slice-in 320ms ease-out both;
+}
+@keyframes data-slice-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* —— ① 收藏时段柱（5 段横向占比） ——
+   每段一行：标签 + 进度条 + 百分比。峰值时段高亮。 */
+.time-bars {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.time-bar-row {
+  display: grid;
+  grid-template-columns: 64px 1fr 32px;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.2;
+}
+.time-bar-label {
+  display: flex;
+  flex-direction: column;
+  color: var(--muted);
+}
+.time-bar-label i {
+  font-style: normal;
+  font-size: 10px;
+  color: #6b7180;
+  margin-top: 1px;
+}
+.time-bar-row.is-peak .time-bar-label {
+  color: var(--ink);
+  font-weight: 600;
+}
+.time-bar-track {
+  height: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.time-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, rgba(25, 211, 197, 0.55), rgba(25, 211, 197, 0.85));
+  border-radius: 5px;
+  transition: width 0.4s ease;
+}
+.time-bar-fill.is-peak {
+  background: linear-gradient(90deg, var(--accent2), rgba(124, 92, 255, 0.85));
+  box-shadow: 0 0 8px rgba(25, 211, 197, 0.35);
+}
+.time-bar-pct {
+  color: var(--muted);
+  font-size: 11px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.time-bar-row.is-peak .time-bar-pct {
+  color: var(--ink);
+  font-weight: 600;
+}
+.time-bars-foot {
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.06);
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* —— ② 主题漂移图 ——
+   N 列 × ≤3 行 chips（SVG 内绘制）；相邻列同名词以青色细线相连，斜率反映
+   排名变化；仅一年出现的词无线（视为"那年的新角色"）。 */
+.topic-drift { width: 100%; }
+.topic-drift svg { display: block; width: 100%; height: auto; }
+.topic-drift-foot {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.topic-legend {
+  display: inline-block;
+  width: 16px;
+  height: 10px;
+  border-radius: 3px;
+  vertical-align: middle;
+  margin-right: 4px;
+  margin-left: 4px;
+}
+.topic-legend.topic-legend-carried {
+  background: rgba(25, 211, 197, 0.18);
+  border: 1px solid rgba(25, 211, 197, 0.55);
+}
+.topic-legend.topic-legend-once {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid #3a3f55;
+}
+
+/* —— ③ 突击收藏日 ——
+   1 号位卡放大、2/3 号位缩小并排在右。日期 + 星期 + 条数 + 主文件夹。
+   不再使用全局 hourBucket 套到单日的描述句（违规已删）。 */
+.binge-days {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 10px;
+  width: 100%;
+  align-items: stretch;
+}
+.binge-days[data-count="1"] { grid-template-columns: 1fr; }
+.binge-card {
+  background: linear-gradient(160deg, #20243a, #181c2c);
+  border: 1px solid #2a2f44;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+.binge-card-1 {
+  border-color: rgba(25, 211, 197, 0.45);
+  box-shadow: 0 0 0 1px rgba(25, 211, 197, 0.12) inset;
+}
+.binge-card-rest {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.binge-card .binge-date {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.binge-card-1 .binge-date { font-size: 20px; }
+.binge-card .binge-weekday {
+  font-size: 11px;
+  color: var(--accent2);
+  letter-spacing: 0.05em;
+}
+.binge-card-1 .binge-weekday { font-size: 12px; }
+.binge-card .binge-date-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.binge-card .binge-meta {
+  margin-top: 4px;
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  color: var(--muted);
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+.binge-card .binge-count {
+  color: var(--ink);
+  font-weight: 600;
+}
+.binge-card .binge-folder {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+.binge-card-rest .binge-card { padding: 9px 12px; }
+.binge-card-rest .binge-date { font-size: 14px; }
+.binge-card-rest .binge-meta { font-size: 11px; }
+
+/* —— ④ 注意力分布横条 ——
+   水平横条 + 滑块；滑块 x = 1 - gini（越右越分散）。两端标签描述语义，
+   下方副信息只显示 top5 占比，不暴露 gini 数值。 */
+.conc-bar {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+.conc-bar-track {
+  position: relative;
+  height: 10px;
+  border-radius: 5px;
+  overflow: visible;
+}
+.conc-bar-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: 5px;
+  background: linear-gradient(
+    90deg,
+    var(--accent) 0%,
+    #f5c97a 50%,
+    var(--accent2) 100%
+  );
+  opacity: 0.72;
+}
+.conc-bar-thumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.conc-bar-thumb-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08), 0 0 8px rgba(0, 0, 0, 0.4);
+}
+.conc-bar-ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: var(--ink);
+}
+.conc-bar-ends span:first-child { color: var(--accent); }
+.conc-bar-ends span:last-child { color: var(--accent2); }
+.conc-bar-meta {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.06);
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .data-slices.reveal-first,
+  .data-slices.reveal-quick,
+  .data-slices.reveal-first .data-slice,
+  .data-slices.reveal-quick .data-slice {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
 /* 深挖阶段：agent 推理文本 + 抓取 chip 状态机 */
 .deep-panel {
   margin: 8px 0 4px 19px;

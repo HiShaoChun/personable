@@ -9,12 +9,15 @@ import { stratifiedSample, DEFAULT_MAX_ENTRIES } from "@/lib/bookmarks/sample";
 import { VIBES, VIBE_LABEL, type Vibe } from "@/lib/vibes";
 import PersonaCard from "@/components/PersonaCard";
 import SampleGallery from "@/components/SampleGallery";
+import DataSlices from "@/components/data-slices/DataSlices";
 import type { PersonaProfile } from "@/lib/agent/schema";
+import type { Overview } from "@/lib/agent/overview";
 
 const STORAGE_KEY = "personable:last";
-// v3：纳入终态展示的过程档案字段（cluster / synth 两段思考流 + 簇 chips），
-// 让刷新后画面与刷新前一致。早版本字段不同，挂载时按版本不匹配被静默丢弃。
-const STORAGE_VERSION = 3 as const;
+// v5：在 v4 基础上 rhythm 接口追加 bucketShares 字段（5 段时段占比），用于
+// 「收藏时段」横条柱。旧 v4 记录缺该字段，加载时会让组件拿不到对象而崩溃，
+// 故 bump 版本号让历史记录被静默丢弃。
+const STORAGE_VERSION = 5 as const;
 
 type PersistedRun = {
   version: typeof STORAGE_VERSION;
@@ -23,6 +26,7 @@ type PersistedRun = {
   profile: PersonaProfile;
   vibeCache: Partial<Record<Vibe, { id: string; profile: PersonaProfile }>>;
   ovStat: { total: number; span: string } | null;
+  overview: Overview | null;
   clusterThinking: string;
   synthThinking: string;
   clusterPrev: ClusterPreview[];
@@ -72,6 +76,10 @@ export default function Home() {
   const [ovStat, setOvStat] = useState<{ total: number; span: string } | null>(
     null
   );
+  // 完整 overview 对象（含 rhythm / bingeDays / identityPhases / concentration /
+  // folderHealth 五组叙事素材）。`.steps` 内的「你的数据切片」图表区据此渲染；
+  // ovStat 仍保留为 Step 标签的派生展示，避免改动既有判定逻辑。
+  const [overview, setOverview] = useState<Overview | null>(null);
   const [clusterPrev, setClusterPrev] = useState<ClusterPreview[]>([]);
   // 聚类 / 合成两步分别流式吐思考文本，让用户看到 agent 在干活
   const [clusterThinking, setClusterThinking] = useState("");
@@ -117,6 +125,7 @@ export default function Home() {
       setIds({ id: parsed.id, runId: parsed.runId });
       setVibeCache(parsed.vibeCache ?? {});
       setOvStat(parsed.ovStat ?? null);
+      setOverview(parsed.overview ?? null);
       // 过程档案：与卡片并列展示的思考流 / 簇 chips
       setClusterThinking(parsed.clusterThinking ?? "");
       setSynthThinking(parsed.synthThinking ?? "");
@@ -138,6 +147,7 @@ export default function Home() {
     setProfile(null);
     setStage(null);
     setOvStat(null);
+    setOverview(null);
     setClusterPrev([]);
     setClusterThinking("");
     setSynthThinking("");
@@ -200,6 +210,7 @@ export default function Home() {
       // 本次运行内的局部镜像：闭包里的 React state 不会随 setX 更新，
       // 持久化 done 快照时需要这里的真实累计值（D6.1）。
       let runOvStat: { total: number; span: string } | null = null;
+      let runOverview: Overview | null = null;
       let runClusterThinking = "";
       let runSynthThinking = "";
       let runClusterPrev: ClusterPreview[] = [];
@@ -220,7 +231,9 @@ export default function Home() {
               span: r.from && r.to ? `${r.from} ~ ${r.to}` : "时间未知",
             };
             runOvStat = nextOv;
+            runOverview = ev.overview as Overview;
             setOvStat(nextOv);
+            setOverview(ev.overview as Overview);
           } else if (ev.phase === "cluster_thinking") {
             const delta = ev.delta as string;
             runClusterThinking += delta;
@@ -249,6 +262,7 @@ export default function Home() {
               profile: ev.profile,
               vibeCache: seededCache,
               ovStat: runOvStat,
+              overview: runOverview,
               clusterThinking: runClusterThinking,
               synthThinking: runSynthThinking,
               clusterPrev: runClusterPrev,
@@ -306,6 +320,7 @@ export default function Home() {
               profile,
               vibeCache: next,
               ovStat,
+              overview,
               clusterThinking,
               synthThinking,
               clusterPrev,
@@ -340,6 +355,7 @@ export default function Home() {
         profile: hit.profile,
         vibeCache,
         ovStat,
+        overview,
         clusterThinking,
         synthThinking,
         clusterPrev,
@@ -372,6 +388,7 @@ export default function Home() {
           profile: data.profile,
           vibeCache: next,
           ovStat,
+          overview,
           clusterThinking,
           synthThinking,
           clusterPrev,
@@ -471,6 +488,11 @@ export default function Home() {
                 : "上传结构化条目，计算概览"
             }
           />
+
+          {/* 数据切片：本地零延迟可视化，填补 cluster 阶段 LLM 等待时间。
+              spec: homepage-data-slices。reveal 编排见 DataSlices 组件。 */}
+          <DataSlices overview={overview} reveal={reveal} />
+
           <Step
             on={!finished && phase === "thinking" && !!ovStat && clusterPrev.length === 0}
             done={finished || clusterPrev.length > 0}

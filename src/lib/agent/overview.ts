@@ -18,6 +18,10 @@ export interface Overview {
   rhythm: {
     topHours: { hour: number; count: number }[]; // top 3
     hourBucket: "深夜" | "凌晨" | "上午" | "下午" | "晚间";
+    bucketShares: Record<
+      "深夜" | "凌晨" | "上午" | "下午" | "晚间",
+      number
+    >; // 5 段占比；datedCount > 0 时 5 段和 ≈ 1，否则全 0
     weekendShare: number; // 0..1
     datedCount: number; // 有 addDate 的条数（参与本组统计的样本）
   };
@@ -159,9 +163,29 @@ export function computeOverview(entries: BookmarkEntry[]): Overview {
     .sort((a, b) => b.count - a.count)
     .slice(0, 3);
   const peakHour = topHours[0]?.hour ?? 0;
+
+  // 5 段时段占比（hourHist 是 24 段 → bucketHour 归类 → 5 段）。
+  // 与 bucketHour 阈值保持完全一致，避免双源真相。
+  const bucketShares: Overview["rhythm"]["bucketShares"] = {
+    深夜: 0,
+    凌晨: 0,
+    上午: 0,
+    下午: 0,
+    晚间: 0,
+  };
+  if (datedCount > 0) {
+    for (let h = 0; h < 24; h++) {
+      bucketShares[bucketHour(h)] += hourHist[h];
+    }
+    for (const k of Object.keys(bucketShares) as (keyof typeof bucketShares)[]) {
+      bucketShares[k] = Number((bucketShares[k] / datedCount).toFixed(3));
+    }
+  }
+
   const rhythm: Overview["rhythm"] = {
     topHours,
     hourBucket: bucketHour(peakHour),
+    bucketShares,
     weekendShare: datedCount > 0 ? weekendCount / datedCount : 0,
     datedCount,
   };

@@ -126,6 +126,18 @@ console.log("\n[persona-agent] overview 叙事素材");
     "rhythm.weekendShare 反映周末占比",
     ov.rhythm.weekendShare > 0 && ov.rhythm.weekendShare < 1
   );
+  const bsKeys = new Set(Object.keys(ov.rhythm.bucketShares));
+  const want = ["深夜", "凌晨", "上午", "下午", "晚间"];
+  check(
+    "rhythm.bucketShares 含 5 个时段键",
+    bsKeys.size === 5 && want.every((k) => bsKeys.has(k))
+  );
+  const bsSum = Object.values(ov.rhythm.bucketShares).reduce((s, n) => s + n, 0);
+  check("rhythm.bucketShares 总和 ≈ 1", Math.abs(bsSum - 1) < 0.05);
+  check(
+    "rhythm.bucketShares 深夜段权重 > 0（凌晨 2 点峰值落入深夜）",
+    ov.rhythm.bucketShares["深夜"] > 0
+  );
 
   // 狂囤日
   check("bingeDays 至少识别出 2024-10-15", ov.bingeDays.length >= 1);
@@ -172,6 +184,8 @@ console.log("\n[persona-agent] overview 叙事素材");
   check("无 addDate 时 bingeDays 为空", ov2.bingeDays.length === 0);
   check("无 addDate 时 identityPhases 为空", ov2.identityPhases.length === 0);
   check("无 addDate 时 dateRange 全 null", ov2.dateRange.from === null && ov2.dateRange.to === null);
+  const bs2 = Object.values(ov2.rhythm.bucketShares);
+  check("无 addDate 时 bucketShares 全 0", bs2.every((n) => n === 0));
 }
 
 console.log("\n[persona-agent] 画像 schema 校验");
