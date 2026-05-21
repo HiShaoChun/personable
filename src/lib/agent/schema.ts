@@ -4,7 +4,6 @@ import type { Vibe } from "@/config";
 export interface InterestCluster {
   name: string; // 命名兴趣簇
   size: number; // 该簇书签条数（相对规模）
-  blurb?: string; // 历史字段，新生成不再带，保留以兼容旧 share JSON
   domains: string[]; // 代表域名
 }
 

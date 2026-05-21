@@ -194,7 +194,7 @@ console.log("\n[persona-agent] 画像 schema 校验");
     {
       headline: "代码与猫的双修者",
       traits: ["技术控", "深夜冲浪", "效率执念"],
-      clusters: [{ name: "技术", size: 40, blurb: "硬核", domains: ["github.com"] }],
+      clusters: [{ name: "技术", size: 40, domains: ["github.com"] }],
       evolution: [{ period: "2020", summary: "前端入坑" }],
     },
     "earnest"

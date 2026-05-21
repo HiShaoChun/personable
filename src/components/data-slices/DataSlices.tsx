@@ -78,7 +78,6 @@ export default function DataSlices({ overview, reveal }: Props) {
     >
       <div className="data-slices-title">
         <strong>你的数据切片</strong>
-        <span>· 本地计算，未上传</span>
       </div>
       <div className="data-slices-grid">
         {tiles.map((t, i) => (

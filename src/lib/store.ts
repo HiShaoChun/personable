@@ -1,6 +1,5 @@
-// 分享卡 + agent 状态存储。memory（开发）/ sqlite（ECS 生产，同机持久）。
-// 只存派生数据：画像 JSON 与缓存的 agent 状态；绝不存原始/结构化书签。
-// spec: persona-card「仅基于派生数据的分享链接」。
+// agent 状态存储。memory（开发）/ sqlite（ECS 生产，同机持久）。
+// 只存派生数据：缓存的 agent 状态（供「换个风格」复用）；绝不存原始/结构化书签。
 import { config } from "@/config";
 
 interface Row {
@@ -88,40 +87,7 @@ function driver(): Driver {
 
 const ttlMs = () => config.cardTtlDays * 24 * 60 * 60 * 1000;
 
-// 卡片封套：包一层带 createdAt，让分享落地页能显示「N 天前生成」时间标。
-// store 的 Driver 本身仍是 opaque kv，封套仅在这两个 helper 内编解码。
-// 读端向后兼容：上线前已写入的裸 profile JSON 没有 `profile` 字段，
-// 退回当成裸 JSON 处理、createdAt 置 null（UI 端据此不渲染时间标）。
-interface CardEnvelope {
-  profile: string;
-  createdAt: number;
-}
-
-export function putCard(id: string, profileJson: string) {
-  const env: CardEnvelope = { profile: profileJson, createdAt: Date.now() };
-  driver().set(`card:${id}`, JSON.stringify(env), ttlMs());
-}
-export function getCard(
-  id: string
-): { profile: string; createdAt: number | null } | null {
-  const raw = driver().get(`card:${id}`);
-  if (raw === null) return null;
-  try {
-    const parsed = JSON.parse(raw) as Partial<CardEnvelope>;
-    if (typeof parsed.profile === "string") {
-      return {
-        profile: parsed.profile,
-        createdAt: typeof parsed.createdAt === "number" ? parsed.createdAt : null,
-      };
-    }
-  } catch {
-    // 解析失败说明是上线前写入的裸 JSON 字符串（更老格式甚至不是合法 JSON
-    // 时同样安全降级）—— 走兼容分支
-  }
-  return { profile: raw, createdAt: null };
-}
-
-// 缓存 agent 状态供「换风格重合成」复用（同 TTL）。
+// 缓存 agent 状态供「换风格重合成」复用。
 export function putAgentState(runId: string, stateJson: string) {
   driver().set(`state:${runId}`, stateJson, ttlMs());
 }

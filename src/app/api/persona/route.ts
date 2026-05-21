@@ -5,7 +5,7 @@ import { config, isVibe, DEFAULT_VIBE } from "@/config";
 import type { BookmarkEntry } from "@/lib/bookmarks/types";
 import { stratifiedSample } from "@/lib/bookmarks/sample";
 import { runAgent, type Progress } from "@/lib/agent/loop";
-import { putCard, putAgentState } from "@/lib/store";
+import { putAgentState } from "@/lib/store";
 import {
   rateLimit,
   acquireRun,
@@ -89,11 +89,10 @@ export async function POST(req: NextRequest) {
         const onProgress = (p: Progress) => send(p);
         const { profile, state } = await runAgent(sample, vibe, onProgress);
         recordRun();
-        const id = nanoid(12);
+        // runId 仍保留：「换个风格」需要服务端 agent 状态缓存。
         const runId = nanoid(16);
-        putCard(id, JSON.stringify(profile));
         putAgentState(runId, JSON.stringify(state));
-        send({ phase: "done", id, runId, profile });
+        send({ phase: "done", runId, profile });
       } catch (e) {
         // 流已开始（HTTP 200），无法再改状态码——以流内事件报错，前端据此处理。
         send({ phase: "error", message: (e as Error).message });

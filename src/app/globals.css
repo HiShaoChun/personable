@@ -568,7 +568,6 @@ a { color: var(--accent2); }
 .cluster .row .rank { color: var(--muted); font-size: 12px; letter-spacing: 0.5px; white-space: nowrap; }
 .cluster .row .rank--main { color: #f5c97a; }
 .cluster .row .rank--side { color: var(--accent2); }
-.cluster .blurb { color: var(--muted); font-size: 13px; margin-top: 3px; }
 .others { color: var(--muted); font-size: 13px; margin: 10px 0 4px; }
 .evo { border-left: 2px solid #2a2f44; padding-left: 16px; margin-top: 16px; }
 .evo div { margin: 10px 0; }
@@ -581,17 +580,15 @@ a { color: var(--accent2); }
   margin-top: 24px;
   align-items: stretch;
 }
-.toolbar-primary {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  flex-wrap: wrap;
-}
 .toolbar-vibes {
   display: flex;
   gap: 12px;
   align-items: center;
   flex-wrap: wrap;
+}
+.toolbar-privacy {
+  display: flex;
+  justify-content: center;
   padding-top: 14px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
@@ -752,7 +749,7 @@ a { color: var(--accent2); }
 /* 人格卡入场动效。spec: persona-card「人格卡入场动效」。
    - reveal-first：翻转 + 弹跳 + 元素错峰（首次合成）
    - reveal-quick：短淡入 + 短 stagger（重新生成）
-   - 不传 reveal：直接终态（分享页 / SampleGallery）
+   - 不传 reveal：直接终态（SampleGallery）
    原 .card 仍负责背景/边框/圆角；reveal 模式下额外加 perspective 与
    `transform-style: preserve-3d`，以及 face/back 两层互补。 */
 .card.reveal-first,

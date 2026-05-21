@@ -50,7 +50,7 @@ export const config = {
   rateLimitMax: num("RATE_LIMIT_MAX", 5),
   maxConcurrentRuns: num("MAX_CONCURRENT_RUNS", 3),
 
-  // 分享卡存储
+  // agent 状态存储 TTL（「换个风格」依赖此缓存）
   cardTtlDays: num("CARD_TTL_DAYS", 7),
   storeDriver: str("STORE_DRIVER", "memory") as "memory" | "sqlite",
   storePath: str("STORE_PATH", "./data/cards.db"),

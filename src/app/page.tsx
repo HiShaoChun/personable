@@ -14,17 +14,15 @@ import type { PersonaProfile } from "@/lib/agent/schema";
 import type { Overview } from "@/lib/agent/overview";
 
 const STORAGE_KEY = "personable:last";
-// v5：在 v4 基础上 rhythm 接口追加 bucketShares 字段（5 段时段占比），用于
-// 「收藏时段」横条柱。旧 v4 记录缺该字段，加载时会让组件拿不到对象而崩溃，
-// 故 bump 版本号让历史记录被静默丢弃。
-const STORAGE_VERSION = 5 as const;
+// v6：移除 `id` 字段（分享链接功能已删，卡片不再有持久 id）；vibeCache value
+// 同步去掉 id。旧 v5 记录形态不同，加载时被静默丢弃。
+const STORAGE_VERSION = 6 as const;
 
 type PersistedRun = {
   version: typeof STORAGE_VERSION;
-  id: string;
   runId: string;
   profile: PersonaProfile;
-  vibeCache: Partial<Record<Vibe, { id: string; profile: PersonaProfile }>>;
+  vibeCache: Partial<Record<Vibe, PersonaProfile>>;
   ovStat: { total: number; span: string } | null;
   overview: Overview | null;
   clusterThinking: string;
@@ -58,20 +56,21 @@ export default function Home() {
   const [err, setErr] = useState("");
   const [note, setNote] = useState("");
   const [profile, setProfile] = useState<PersonaProfile | null>(null);
-  const [ids, setIds] = useState<{ id: string; runId: string } | null>(null);
+  // runId 是服务端 agent 状态缓存的键，「换个风格」时复用，避免重跑深挖。
+  // 分享链接功能已删，前端不再需要 card id（v6）。
+  const [runId, setRunId] = useState<string | null>(null);
   const [busyVibe, setBusyVibe] = useState<Vibe | null>(null);
-  const [copied, setCopied] = useState(false);
   // 后台预生成其余 vibe 的成品，按 vibe 索引；首次定稿 seed 当前 vibe，
   // 命中即瞬时切换，未命中走原 fetch 路径。详见 openspec change
   // 2026-05-18-precompute-vibe-variants（D1）。
   const [vibeCache, setVibeCache] = useState<
-    Partial<Record<Vibe, { id: string; profile: PersonaProfile }>>
+    Partial<Record<Vibe, PersonaProfile>>
   >({});
   // 渐进式预览：概览/簇先到，掩盖深挖+合成时延
   const [stage, setStage] = useState<Stage | null>(null);
   // 入场动效控制：未播首次入场前 → "first"；播完或从 localStorage 恢复 → "none"；
-  // 用户「换个风格」重生成后 → "quick"。由 ids.id 变化触发 PersonaCard 重挂载
-  // 来重新播放（见下方 key={ids?.id}）。
+  // 用户「换个风格」重生成后 → "quick"。由 profile.vibe 变化触发 PersonaCard
+  // 重挂载来重新播放（见下方 key={profile.vibe}）。
   const [reveal, setReveal] = useState<"first" | "quick" | "none">("first");
   const [ovStat, setOvStat] = useState<{ total: number; span: string } | null>(
     null
@@ -114,7 +113,6 @@ export default function Home() {
       if (
         !parsed ||
         parsed.version !== STORAGE_VERSION ||
-        !parsed.id ||
         !parsed.runId ||
         !parsed.profile
       ) {
@@ -122,7 +120,7 @@ export default function Home() {
         return;
       }
       setProfile(parsed.profile);
-      setIds({ id: parsed.id, runId: parsed.runId });
+      setRunId(parsed.runId);
       setVibeCache(parsed.vibeCache ?? {});
       setOvStat(parsed.ovStat ?? null);
       setOverview(parsed.overview ?? null);
@@ -248,16 +246,15 @@ export default function Home() {
             runSynthThinking += delta;
             setSynthThinking((s) => s + delta);
           } else if (ev.phase === "done") {
-            const seededCache = {
-              [ev.profile.vibe]: { id: ev.id, profile: ev.profile },
+            const seededCache: Partial<Record<Vibe, PersonaProfile>> = {
+              [ev.profile.vibe as Vibe]: ev.profile,
             };
             setProfile(ev.profile);
-            setIds({ id: ev.id, runId: ev.runId });
+            setRunId(ev.runId);
             // seed 当前 vibe 的成品到缓存，预生成 effect 只算「剩余」vibe（D3）
             setVibeCache(seededCache);
             setPhase("done");
             persistRun({
-              id: ev.id,
               runId: ev.runId,
               profile: ev.profile,
               vibeCache: seededCache,
@@ -286,10 +283,10 @@ export default function Home() {
   }
 
   // 终态出现后立即并发预生成其余 vibe；失败一律静默，不进入主流程错误态。
-  // 依赖只列 ids?.runId / phase / profile?.vibe —— 这三者一起把「同一次运行」
-  // 圈住，避免被无关 state 变化（如切换 vibe 后 ids.id 变了）二次触发（D2）。
+  // 依赖只列 runId / phase / profile?.vibe —— 这三者一起把「同一次运行」圈住，
+  // 避免被无关 state 变化二次触发（D2）。
   useEffect(() => {
-    if (phase !== "done" || !ids || !profile) return;
+    if (phase !== "done" || !runId || !profile) return;
     const missing = VIBES.filter(
       (v) => v !== profile.vibe && !vibeCache[v]
     );
@@ -301,22 +298,18 @@ export default function Home() {
           const res = await fetch("/api/regenerate", {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({ runId: ids.runId, vibe: v }),
+            body: JSON.stringify({ runId, vibe: v }),
           });
           if (!res.ok) return; // rate_limited / busy / budget / expired —— 静默
-          const data = (await res.json()) as {
-            id: string;
-            profile: PersonaProfile;
-          };
+          const data = (await res.json()) as { profile: PersonaProfile };
           if (cancelled) return;
           // 用 functional updater 避免两个并发 setVibeCache 互相覆盖；
           // persist 放在 updater 内能拿到合并后的最新 vibeCache 写入
           // localStorage（Strict Mode 双调用会重复 persist 同一内容，幂等无害）。
           setVibeCache((c) => {
-            const next = { ...c, [v]: { id: data.id, profile: data.profile } };
+            const next = { ...c, [v]: data.profile };
             persistRun({
-              id: ids.id,
-              runId: ids.runId,
+              runId,
               profile,
               vibeCache: next,
               ovStat,
@@ -338,21 +331,19 @@ export default function Home() {
     // vibeCache 故意不进依赖：每次写入会触发 effect 重跑，重跑时 missing 缩小
     // 直至空集自然 return，不会重复发请求；进依赖反而需要额外去重 flag。
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ids?.runId, phase, profile?.vibe]);
+  }, [runId, phase, profile?.vibe]);
 
   async function regenerate(vibe: Vibe) {
-    if (!ids) return;
+    if (!runId) return;
     // 命中预生成缓存：同步替换、不进入 busyVibe、不发请求（D4）
     const hit = vibeCache[vibe];
     if (hit) {
-      setProfile(hit.profile);
-      setIds({ ...ids, id: hit.id });
+      setProfile(hit);
       setReveal("quick");
       setErr("");
       persistRun({
-        id: hit.id,
-        runId: ids.runId,
-        profile: hit.profile,
+        runId,
+        profile: hit,
         vibeCache,
         ovStat,
         overview,
@@ -368,7 +359,7 @@ export default function Home() {
       const res = await fetch("/api/regenerate", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ runId: ids.runId, vibe }),
+        body: JSON.stringify({ runId, vibe }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -376,15 +367,13 @@ export default function Home() {
         return;
       }
       setProfile(data.profile);
-      setIds({ ...ids, id: data.id }); // 每个风格变体独立分享链接
       setReveal("quick");
       // 回填缓存：下次再切回同 vibe 即瞬时（D4 注 2）；persist 放在 updater 内
       // 以拿到合并最新 vibeCache（与预生成 effect 同样的考量）
       setVibeCache((c) => {
-        const next = { ...c, [vibe]: { id: data.id, profile: data.profile } };
+        const next = { ...c, [vibe]: data.profile };
         persistRun({
-          id: data.id,
-          runId: ids.runId,
+          runId,
           profile: data.profile,
           vibeCache: next,
           ovStat,
@@ -400,31 +389,13 @@ export default function Home() {
     }
   }
 
-  async function copyShare() {
-    if (!ids) return;
-    const link = `${location.origin}/persona/${ids.id}`;
-    // 复制为带前缀的可读文本：「【书签人格卡】<headline> <url>」，让对方在
-    // 聊天里粘贴出来一眼就知道这是什么。spec: persona-card「复制可读分享文本」。
-    const headline = profile?.headline?.trim() || "你的互联网人格";
-    const shareText = `【书签人格卡】${headline} ${link}`;
-    try {
-      await navigator.clipboard.writeText(shareText);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // 非 HTTPS / 文档失焦 / 权限被拒 —— 写剪贴板会失败。
-      // 此时把完整可分享文本塞进 note，让用户能手动复制。
-      setNote("复制失败，请手动复制：" + shareText);
-    }
-  }
-
   const finished = phase === "done";
 
   return (
     <main className="wrap">
       <h1>书签人格卡</h1>
       <p className="sub">
-        拖入你浏览器导出的书签 HTML，AI 解读你的互联网人格，生成一张可分享的卡片。
+        拖入你浏览器导出的书签 HTML，AI 解读你的互联网人格。
       </p>
 
       {phase === "idle" && (
@@ -551,18 +522,12 @@ export default function Home() {
       {phase === "done" && profile && (
         <>
           <PersonaCard
-            key={ids?.id ?? "initial"}
+            key={profile.vibe}
             profile={profile}
             reveal={reveal}
             onRevealEnd={() => setReveal("none")}
           />
           <div className={"toolbar" + (reveal === "none" ? "" : ` reveal-${reveal}`)}>
-            <div className="toolbar-primary">
-              <button className="btn" onClick={copyShare}>
-                {copied ? "已复制" : "复制分享链接"}
-              </button>
-              <a className="privacy-link" href="/privacy">数据怎么处理？</a>
-            </div>
             <div className="toolbar-vibes">
               <span className="vibes-label">换个风格</span>
               <div className="vibes-group">
@@ -581,6 +546,9 @@ export default function Home() {
                   );
                 })}
               </div>
+            </div>
+            <div className="toolbar-privacy">
+              <a className="privacy-link" href="/privacy">数据怎么处理？</a>
             </div>
           </div>
         </>

@@ -1,11 +1,10 @@
 // 按风格重合成：复用缓存的 agent 状态，仅一次合成调用，不重跑深挖。
 // spec: persona-agent「按风格重合成且不重跑深挖」、persona-card「换个风格重新生成」。
 import { NextRequest, NextResponse } from "next/server";
-import { nanoid } from "nanoid";
 import { config, isVibe } from "@/config";
 import { TokenBudget } from "@/lib/agent/llm";
 import { synthesize, type AgentState } from "@/lib/agent/synthesize";
-import { getAgentState, putCard } from "@/lib/store";
+import { getAgentState } from "@/lib/store";
 import {
   rateLimit,
   acquireRun,
@@ -58,9 +57,7 @@ export async function POST(req: NextRequest) {
     const state = JSON.parse(stateJson) as AgentState;
     const profile = await synthesize(state, body.vibe, new TokenBudget());
     recordRun();
-    const id = nanoid(12); // 每个风格变体独立分享链接
-    putCard(id, JSON.stringify(profile));
-    return NextResponse.json({ id, profile });
+    return NextResponse.json({ profile });
   } catch (e) {
     return NextResponse.json(
       { error: "synth_failed", message: (e as Error).message },
