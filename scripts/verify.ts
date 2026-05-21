@@ -7,6 +7,8 @@ import {
 } from "../src/lib/bookmarks/parse";
 import { stratifiedSample } from "../src/lib/bookmarks/sample";
 import { validateProfile, normalizeProfile } from "../src/lib/agent/schema";
+import { computeOverview } from "../src/lib/agent/overview";
+import type { BookmarkEntry } from "../src/lib/bookmarks/types";
 
 let pass = 0;
 let fail = 0;
@@ -91,6 +93,85 @@ console.log("\n[bookmark-import] 客户端解析 / 去重 / 上限");
   );
   const { sampled: s2 } = stratifiedSample(big.slice(0, 100), 800);
   check("未超上限不采样", s2 === false);
+}
+
+console.log("\n[persona-agent] overview 叙事素材");
+{
+  // UTC+8 下：2024-10-15 02:00 = 2024-10-14 18:00 UTC = 1728928800
+  // 2024-10-15 03:00 局部 = 1728932400；同日 23:00 = 1728984000
+  // 用一组真实化时间戳：同一天 4 条 + 周末 2 条 + 跨年 2 条
+  const entries: BookmarkEntry[] = [
+    // 2024-10-15（周二）UTC+8 凌晨 2/3 点 与 晚 22 点：触发 binge + 深夜节律
+    { title: "PPT 1", url: "https://ppt.com/1", domain: "ppt.com", folderPaths: ["书签栏 / PPT"], addDate: 1728928800 },
+    { title: "PPT 2", url: "https://ppt.com/2", domain: "ppt.com", folderPaths: ["书签栏 / PPT"], addDate: 1728932400 },
+    { title: "PPT 3", url: "https://ppt.com/3", domain: "ppt.com", folderPaths: ["书签栏 / PPT"], addDate: 1728936000 },
+    { title: "深夜杂", url: "https://x.com/1", domain: "x.com", folderPaths: ["书签栏 / PPT"], addDate: 1728981000 },
+    // 2024-10-19（周六）：周末
+    { title: "周末", url: "https://w.com/1", domain: "w.com", folderPaths: ["书签栏 / 闲"], addDate: 1729310400 },
+    { title: "周末2", url: "https://w.com/2", domain: "w.com", folderPaths: ["书签栏 / 闲"], addDate: 1729314000 },
+    // 2021 年：身份相位前段
+    { title: "求职", url: "https://nowcoder.com/1", domain: "nowcoder.com", folderPaths: ["书签栏 / 求职"], addDate: 1640000000 },
+    { title: "求职2", url: "https://nowcoder.com/2", domain: "nowcoder.com", folderPaths: ["书签栏 / 求职"], addDate: 1640100000 },
+    { title: "求职3", url: "https://leetcode.com/1", domain: "leetcode.com", folderPaths: ["书签栏 / 求职"], addDate: 1640200000 },
+    // 一个 dead folder 与 orphan
+    { title: "孤儿", url: "https://orphan.com/1", domain: "orphan.com", folderPaths: [], addDate: 1729400000 },
+    { title: "壮志未酬", url: "https://lonely.com/1", domain: "lonely.com", folderPaths: ["书签栏 / 一时兴起"], addDate: 1729500000 },
+  ];
+  const ov = computeOverview(entries);
+
+  // 节律
+  check("rhythm.datedCount 全计入", ov.rhythm.datedCount === 11);
+  check("rhythm.hourBucket 深夜（峰值在 0-3 点）", ov.rhythm.hourBucket === "深夜");
+  check(
+    "rhythm.weekendShare 反映周末占比",
+    ov.rhythm.weekendShare > 0 && ov.rhythm.weekendShare < 1
+  );
+
+  // 狂囤日
+  check("bingeDays 至少识别出 2024-10-15", ov.bingeDays.length >= 1);
+  check(
+    "bingeDays.topFolder 指向当日主文件夹",
+    ov.bingeDays[0].date === "2024-10-15" &&
+      ov.bingeDays[0].count >= 3 &&
+      ov.bingeDays[0].topFolder.includes("PPT")
+  );
+
+  // 身份相位
+  check(
+    "identityPhases 至少含 2021 与 2024 两个年",
+    ov.identityPhases.length >= 2 &&
+      ov.identityPhases.some((p) => p.period === "2021") &&
+      ov.identityPhases.some((p) => p.period === "2024")
+  );
+  check(
+    "identityPhases 2021 折射求职阶段",
+    ov.identityPhases.find((p) => p.period === "2021")?.topFolders[0]?.includes("求职") === true
+  );
+
+  // 集中度（同一域名多次出现 → gini > 0）
+  check("concentration.gini 数值落在 [0,1)", ov.concentration.gini >= 0 && ov.concentration.gini < 1);
+  check("concentration.top5Share 落在 [0,1]", ov.concentration.top5Share >= 0 && ov.concentration.top5Share <= 1);
+  check(
+    "concentration.label 在三档之一",
+    ["广撒网", "均衡", "死忠粉"].includes(ov.concentration.label)
+  );
+
+  // 文件夹健康
+  check("folderHealth.totalFolders 计入真实文件夹", ov.folderHealth.totalFolders >= 3);
+  check("folderHealth.deadFolders 识别出『一时兴起』那个孤本", ov.folderHealth.deadFolders >= 1);
+  check("folderHealth.orphanShare 反映 1/11 无文件夹", ov.folderHealth.orphanShare > 0);
+  check("folderHealth.maxDepth ≥ 2", ov.folderHealth.maxDepth >= 2);
+
+  // 退化场景：所有 addDate 缺失，时间相关字段需安全降级
+  const noDate: BookmarkEntry[] = [
+    { title: "a", url: "https://a.com/", domain: "a.com", folderPaths: [], addDate: null },
+    { title: "b", url: "https://b.com/", domain: "b.com", folderPaths: [], addDate: null },
+  ];
+  const ov2 = computeOverview(noDate);
+  check("无 addDate 时 rhythm.datedCount 为 0", ov2.rhythm.datedCount === 0);
+  check("无 addDate 时 bingeDays 为空", ov2.bingeDays.length === 0);
+  check("无 addDate 时 identityPhases 为空", ov2.identityPhases.length === 0);
+  check("无 addDate 时 dateRange 全 null", ov2.dateRange.from === null && ov2.dateRange.to === null);
 }
 
 console.log("\n[persona-agent] 画像 schema 校验");

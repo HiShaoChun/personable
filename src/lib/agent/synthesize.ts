@@ -27,14 +27,55 @@ const SAFETY =
   "若书签暗示敏感话题，仅做中性、克制的概括。";
 
 function buildPrompt(state: AgentState, vibe: Vibe): string {
+  const { overview } = state;
   const clusterLines = state.clusters.clusters
     .map((c) => `- ${c.name}（${c.memberIndices.length} 条）：${c.note}`)
     .join("\n");
-  return `用户互联网人格画像素材：
-概览：${state.overview.total} 条书签，时间 ${state.overview.dateRange.from ?? "?"} ~ ${
-    state.overview.dateRange.to ?? "?"
+
+  // 「叙事素材」段：rhythm / bingeDays / identityPhases / concentration /
+  // folderHealth 拼成短行，给 LLM 当 evidence 弹药。只在数据足够支撑时输出，
+  // 数据不够（如全部 addDate 缺失）整段省略，避免逼模型编造。
+  const evidenceLines: string[] = [];
+  if (overview.rhythm.datedCount > 0) {
+    const top = overview.rhythm.topHours
+      .map((h) => `${h.hour}点(${h.count})`)
+      .join("/");
+    evidenceLines.push(
+      `节律：${overview.rhythm.hourBucket}型，常加书签时段 ${top}，周末占比 ${(overview.rhythm.weekendShare * 100).toFixed(0)}%`
+    );
   }
-兴趣簇：
+  if (overview.bingeDays.length > 0) {
+    const days = overview.bingeDays
+      .map((d) => `${d.date}(${d.count}条·${d.topFolder})`)
+      .join("、");
+    evidenceLines.push(`狂囤日：${days}`);
+  }
+  if (overview.identityPhases.length >= 2) {
+    const phases = overview.identityPhases
+      .map(
+        (p) =>
+          `${p.period}(${p.total}条·${p.topFolders.slice(0, 2).join("/") || "无文件夹"}·${p.topDomains.slice(0, 2).join("/")})`
+      )
+      .join(" → ");
+    evidenceLines.push(`身份相位：${phases}`);
+  }
+  evidenceLines.push(
+    `集中度：${overview.concentration.label}（gini=${overview.concentration.gini}，top5 域名占 ${(overview.concentration.top5Share * 100).toFixed(0)}%）`
+  );
+  if (overview.folderHealth.totalFolders > 0) {
+    evidenceLines.push(
+      `文件夹健康：共 ${overview.folderHealth.totalFolders} 个，其中 ${overview.folderHealth.deadFolders} 个只有 1 条（${(overview.folderHealth.deadFolderRatio * 100).toFixed(0)}%），最深 ${overview.folderHealth.maxDepth} 层${overview.folderHealth.deepestPath ? `（${overview.folderHealth.deepestPath}）` : ""}，无文件夹占比 ${(overview.folderHealth.orphanShare * 100).toFixed(0)}%`
+    );
+  }
+  const evidenceBlock = evidenceLines.length
+    ? `\n叙事素材（具体事实，写 headline / signatureQuote / evolution 时优先挑这些挖细节，但不要逐字复述数字）：\n${evidenceLines.map((l) => `- ${l}`).join("\n")}\n`
+    : "";
+
+  return `用户互联网人格画像素材：
+概览：${overview.total} 条书签，时间 ${overview.dateRange.from ?? "?"} ~ ${
+    overview.dateRange.to ?? "?"
+  }
+${evidenceBlock}兴趣簇：
 ${clusterLines}
 初版草图：${state.clusters.personaSketch}
 
