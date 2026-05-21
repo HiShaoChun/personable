@@ -13,6 +13,10 @@ import DataSlices from "@/components/data-slices/DataSlices";
 import type { PersonaProfile } from "@/lib/agent/schema";
 import type { Overview } from "@/lib/agent/overview";
 
+// basePath 前缀（部署到 /personable 子路径时由 next.config 注入）；
+// 普通 <Link>/<a> Next 会自动前缀，但 fetch 不会，需要手动拼。
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
 const STORAGE_KEY = "personable:last";
 // v6：移除 `id` 字段（分享链接功能已删，卡片不再有持久 id）；vibeCache value
 // 同步去掉 id。旧 v5 记录形态不同，加载时被静默丢弃。
@@ -184,7 +188,7 @@ export default function Home() {
         );
       setPhase("thinking");
       setStage("cluster");
-      const res = await fetch("/api/persona", {
+      const res = await fetch(`${BASE_PATH}/api/persona`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ entries: sample }),
@@ -295,7 +299,7 @@ export default function Home() {
     void Promise.all(
       missing.map(async (v) => {
         try {
-          const res = await fetch("/api/regenerate", {
+          const res = await fetch(`${BASE_PATH}/api/regenerate`, {
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify({ runId, vibe: v }),
@@ -356,7 +360,7 @@ export default function Home() {
     setBusyVibe(vibe);
     setErr("");
     try {
-      const res = await fetch("/api/regenerate", {
+      const res = await fetch(`${BASE_PATH}/api/regenerate`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ runId, vibe }),
@@ -546,9 +550,6 @@ export default function Home() {
                   );
                 })}
               </div>
-            </div>
-            <div className="toolbar-privacy">
-              <a className="privacy-link" href="/privacy">数据怎么处理？</a>
             </div>
           </div>
         </>
