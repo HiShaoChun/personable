@@ -10,6 +10,7 @@ import { VIBES, VIBE_LABEL, type Vibe } from "@/lib/vibes";
 import PersonaCard from "@/components/PersonaCard";
 import SampleGallery from "@/components/SampleGallery";
 import DataSlices from "@/components/data-slices/DataSlices";
+import { SAMPLE_OVERVIEW } from "@/lib/samples";
 import type { PersonaProfile } from "@/lib/agent/schema";
 import type { Overview } from "@/lib/agent/overview";
 
@@ -447,9 +448,19 @@ export default function Home() {
         </details>
       )}
 
-      {/* 仅在「全新访客」视图（idle 且无持久化恢复态）展示示例画廊。
+      {/* 仅在「全新访客」视图（idle 且无持久化恢复态）展示成品预览：
+          数据切片（量化）+ 人格卡画廊（解读）。让访客一眼明白网页能给到什么。
           spec: homepage-samples「与主流程可见性互斥」。 */}
-      {phase === "idle" && !profile && <SampleGallery />}
+      {phase === "idle" && !profile && (
+        <section className="idle-preview">
+          <div className="idle-preview-head">
+            <span className="idle-preview-eyebrow">上传后大概是这样 ↓</span>
+            <h2>把书签变成两种解读</h2>
+          </div>
+          <DataSlices overview={SAMPLE_OVERVIEW} reveal="none" isSample />
+          <SampleGallery />
+        </section>
+      )}
 
       {phase !== "idle" && (
         <div className="steps">

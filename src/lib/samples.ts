@@ -2,6 +2,7 @@
 // 让访客一眼看到「换风格」会带来哪些差异。纯前端静态数据，不进任何
 // LLM/抓取/持久化路径。
 import type { PersonaProfile } from "@/lib/agent/schema";
+import type { Overview } from "@/lib/agent/overview";
 
 // 共享的虚构兴趣簇：跨三份示例完全一致，差异只体现在 headline / traits /
 // evolution 的措辞上，避免「内容不同所以差异这么大」的错觉。
@@ -101,3 +102,90 @@ export const SAMPLE_PROFILES: PersonaProfile[] = [
   SAMPLE_ROAST,
   SAMPLE_POETIC,
 ];
+
+// 首页 idle 态「你的数据切片」示例。和 SAMPLE_EARNEST 同一故事线：
+// 工程师晚间收藏 → AI/独立游戏长期主题 → 2025 居家美学加入。
+// 数据为纯前端静态对象，仅供 <DataSlices isSample /> 渲染示意。
+export const SAMPLE_OVERVIEW: Overview = {
+  total: 240,
+  domainHistogram: [
+    { domain: "github.com", count: 42 },
+    { domain: "arxiv.org", count: 28 },
+    { domain: "store.steampowered.com", count: 19 },
+    { domain: "bilibili.com", count: 14 },
+    { domain: "huggingface.co", count: 12 },
+    { domain: "itch.io", count: 9 },
+    { domain: "muji.com", count: 7 },
+    { domain: "xiaohongshu.com", count: 6 },
+  ],
+  dateRange: { from: "2022-03-04", to: "2026-05-18" },
+  folderTree: [
+    { path: "AI / Papers", count: 58 },
+    { path: "AI / Tools", count: 41 },
+    { path: "Games / Indie", count: 38 },
+    { path: "Anime", count: 22 },
+    { path: "Keyboards", count: 18 },
+    { path: "Home / 居家美学", count: 14 },
+  ],
+  rhythm: {
+    topHours: [
+      { hour: 22, count: 38 },
+      { hour: 23, count: 31 },
+      { hour: 21, count: 27 },
+    ],
+    hourBucket: "晚间",
+    bucketShares: {
+      深夜: 0.12,
+      凌晨: 0.03,
+      上午: 0.10,
+      下午: 0.20,
+      晚间: 0.55,
+    },
+    weekendShare: 0.42,
+    datedCount: 200,
+  },
+  bingeDays: [
+    { date: "2024-03-18", count: 14, topFolder: "AI / Papers" },
+    { date: "2024-12-22", count: 11, topFolder: "Games / Indie" },
+    { date: "2025-08-09", count: 9, topFolder: "Home / 居家美学" },
+  ],
+  identityPhases: [
+    {
+      period: "2022",
+      total: 38,
+      topDomains: ["github.com", "arxiv.org", "huggingface.co"],
+      topFolders: ["AI / Papers", "AI / Tools", "Anime"],
+    },
+    {
+      period: "2023",
+      total: 54,
+      topDomains: ["github.com", "arxiv.org", "bilibili.com"],
+      topFolders: ["AI / Papers", "AI / Tools", "Games / Indie"],
+    },
+    {
+      period: "2024",
+      total: 61,
+      topDomains: ["github.com", "store.steampowered.com", "bilibili.com"],
+      topFolders: ["Games / Indie", "AI / Papers", "Keyboards"],
+    },
+    {
+      period: "2025",
+      total: 47,
+      topDomains: ["github.com", "store.steampowered.com", "muji.com"],
+      topFolders: ["Games / Indie", "Home / 居家美学", "AI / Papers"],
+    },
+  ],
+  concentration: {
+    gini: 0.42,
+    top5Share: 0.38,
+    label: "均衡",
+  },
+  folderHealth: {
+    totalFolders: 12,
+    deadFolders: 2,
+    deadFolderRatio: 0.167,
+    maxDepth: 2,
+    deepestPath: "Home / 居家美学",
+    orphanShare: 0.08,
+  },
+};

@@ -14,12 +14,15 @@ import ConcentrationBar from "./ConcentrationBar";
 interface Props {
   overview: Overview | null;
   reveal: "first" | "quick" | "none";
+  // 首页 idle 用示例数据预览：加「示例」徽章 + 解除 .data-slices 默认的
+  // step-list 左缩进，避免在非 .steps 上下文里看着歪。
+  isSample?: boolean;
 }
 
 const DELAYS_FIRST = [200, 500, 800, 1100];
 const DELAYS_QUICK = [80, 160, 240, 320];
 
-export default function DataSlices({ overview, reveal }: Props) {
+export default function DataSlices({ overview, reveal, isSample }: Props) {
   if (!overview) return null;
 
   const showTimeBars = overview.rhythm.datedCount > 0;
@@ -73,11 +76,19 @@ export default function DataSlices({ overview, reveal }: Props) {
   return (
     <div
       className={
-        "data-slices" + (reveal !== "none" ? ` reveal-${reveal}` : "")
+        "data-slices" +
+        (reveal !== "none" ? ` reveal-${reveal}` : "") +
+        (isSample ? " is-sample" : "")
       }
     >
       <div className="data-slices-title">
         <strong>你的数据切片</strong>
+        {isSample && (
+          <>
+            <span className="data-slices-badge">示例</span>
+            <span className="data-slices-hint">上传后会变成你自己的</span>
+          </>
+        )}
       </div>
       <div className="data-slices-grid">
         {tiles.map((t, i) => (
